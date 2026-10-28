@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/OneLiteFeatherNET/Quelea/compare/v0.2.0...v0.3.0) (2026-10-28)
+
+
+### Features
+
+* **party:** bring the party back to the lobby with its leader ([#21](https://github.com/OneLiteFeatherNET/Quelea/issues/21)) ([38d35c4](https://github.com/OneLiteFeatherNET/Quelea/commit/38d35c4438eea056f4da3f65b5ab25b549a585f5))
+* **velocity:** give party messages colour, clickable help and open translations ([#18](https://github.com/OneLiteFeatherNET/Quelea/issues/18)) ([f3c89e2](https://github.com/OneLiteFeatherNET/Quelea/commit/f3c89e215945b16fcde7c2ed4c24814c9bc25e93))
+
 ## [0.2.0](https://github.com/OneLiteFeatherNET/Quelea/compare/v0.1.0...v0.2.0) (2026-10-28)
 
 
