@@ -107,6 +107,12 @@ tasks.named("optimizedBuildLayers") {
     }
 }
 
+// ./gradlew :backend:run is local development against docker/docker-compose.yml: the dev environment turns
+// authentication off (application-dev.yml), which the start-up guard allows only there.
+tasks.named<JavaExec>("run") {
+    environment("MICRONAUT_ENVIRONMENTS", "dev")
+}
+
 // Integration tests (@Tag("integration")) need Docker for Testcontainers. Run the rest without it
 // via ./gradlew :backend:test -PexcludeTags=integration.
 tasks.withType<Test>().configureEach {
