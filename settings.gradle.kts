@@ -87,3 +87,4 @@ dependencyResolutionManagement {
 
 include("backend")
 include("client")
+include("velocity")
