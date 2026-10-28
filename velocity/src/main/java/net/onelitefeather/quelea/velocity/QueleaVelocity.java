@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -86,7 +87,7 @@ public final class QueleaVelocity {
         registerCommand(commands.party(), "p");
         registerCommand(commands.chat());
 
-        EventHandler handler = new EventHandler(localPlayers, messages, follow);
+        EventHandler handler = new EventHandler(localPlayers, messages, follow, Clock.systemUTC());
         eventStream = new EventStream(
                 httpClient,
                 HttpQueleaGateway.eventsUri(config.url(), config.proxyId()),

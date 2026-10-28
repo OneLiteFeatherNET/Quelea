@@ -75,6 +75,21 @@ class MessagesTest {
     }
 
     @Test
+    void expiryMessagesExistInBothLanguages() {
+        for (String key : List.of("party.expiring", "party.disbanded.expired-alone")) {
+            assertTrue(messages.hasKey(Locale.ENGLISH, key), "English is missing " + key);
+            assertTrue(messages.hasKey(Locale.GERMAN, key), "German is missing " + key);
+        }
+    }
+
+    @Test
+    void germanExpiryMessageNamesTheMinutesLeft() {
+        String text = plain(messages.line(Locale.GERMAN, "party.expiring", Placeholder.unparsed("minutes", "5")));
+
+        assertTrue(text.contains("5 Minuten"), "German text: " + text);
+    }
+
+    @Test
     void playerTextIsNeverReadAsMiniMessage() {
         Component line = messages.line(Locale.ENGLISH, "party.chat",
                 Placeholder.unparsed("sender", "Alice"),

@@ -351,6 +351,30 @@ class PartyServiceTest {
     }
 
     @Test
+    void lastPartnerLeavingCarriesReasonLastMemberLeft() {
+        PartyFixture f = new PartyFixture();
+        UUID alpha = f.online("Alpha");
+        UUID bravo = f.online("Bravo");
+        Party party = join(f, alpha, "Bravo");
+
+        f.partyService.leave(bravo, "leave");
+
+        assertEquals("last-member-left", lastEvent(f, "party.disbanded").payload().get("reason"),
+                "a party that drops to one member must be disbanded with reason last-member-left, whatever the leave reason");
+    }
+
+    @Test
+    void disbandByLeaderCarriesReasonLeader() {
+        PartyFixture f = new PartyFixture();
+        UUID alpha = f.online("Alpha");
+        Party party = f.partyService.create(alpha);
+
+        f.partyService.disband(party.id(), alpha);
+
+        assertEquals("leader", lastEvent(f, "party.disbanded").payload().get("reason"), "the leader's disband must carry reason leader");
+    }
+
+    @Test
     void leaveOfPlayerWithoutPartyIsNotInParty() {
         PartyFixture f = new PartyFixture();
 

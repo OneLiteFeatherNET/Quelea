@@ -4,6 +4,7 @@ import net.onelitefeather.quelea.backend.party.Invite;
 import net.onelitefeather.quelea.backend.party.Party;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,4 +37,21 @@ public interface PartyStore {
     void deleteInvitesOf(UUID targetId);
 
     long countParties();
+
+    /**
+     * Marks a party that has one member: its expiry is due at {@code expireAt}; its warning is due at
+     * {@code warnAt}, or never when {@code warnAt} is null.
+     */
+    void markAlone(UUID partyId, Instant expireAt, Instant warnAt);
+
+    /** Removes the party from both lonely-party sets. */
+    void clearAlone(UUID partyId);
+
+    /** Parties whose warning is due at {@code now} or earlier. */
+    List<UUID> dueWarnings(Instant now);
+
+    /** Parties whose expiry is due at {@code now} or earlier. */
+    List<UUID> dueExpiries(Instant now);
+
+    void clearWarning(UUID partyId);
 }

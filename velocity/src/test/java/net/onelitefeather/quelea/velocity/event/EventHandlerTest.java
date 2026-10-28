@@ -11,6 +11,9 @@ import net.onelitefeather.quelea.velocity.player.FakeLocalPlayers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -26,6 +29,7 @@ class EventHandlerTest {
     private static final UUID FOLLOWER_IN_LOBBY = UUID.fromString("00000000-0000-0000-0000-00000000000b");
     private static final UUID FOLLOWER_IN_GAME = UUID.fromString("00000000-0000-0000-0000-00000000000c");
     private static final UUID OFFLINE_MEMBER = UUID.fromString("00000000-0000-0000-0000-00000000000d");
+    private static final Instant NOW = Instant.parse("2026-10-28T10:00:00Z");
 
     private final Messages messages = Messages.load();
     private final FollowPolicy lobbyMode = FollowPolicy.of("(?i)^lobby.*", FollowMode.LOBBY);
@@ -44,7 +48,7 @@ class EventHandlerTest {
     }
 
     private EventHandler handler() {
-        return new EventHandler(players, messages, lobbyMode);
+        return new EventHandler(players, messages, lobbyMode, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     private static String member(UUID id, String name) {
@@ -131,6 +135,60 @@ class EventHandlerTest {
         assertEquals(1, leader.sent().size(), "the former leader is told");
         assertEquals(1, lobbyFollower.sent().size(), "the former member is told");
         assertTrue(gameFollower.sent().isEmpty(), "players who were not in the party are not told");
+    }
+
+    @Test
+    void disbandedWithOtherReasonKeepsTheGenericMessage() {
+        PartyEvent disbanded = event("party.disbanded", LEADER.toString(), "", """
+                {"formerMembers":[{"id":"%s","name":"Alice"}],"reason":"last-member-left"}""".formatted(LEADER));
+
+        handler().handle(disbanded);
+
+        assertTrue(plain(leader.sent().get(0)).contains("The party was disbanded."), "a reason without its own text keeps the generic one");
+    }
+
+    @Test
+    void disbandedExpiredAloneTellsTheFormerLeaderThatNobodyJoined() {
+        PartyEvent disbanded = event("party.disbanded", LEADER.toString(), "", """
+                {"formerMembers":[{"id":"%s","name":"Alice"}],"reason":"expired-alone"}""".formatted(LEADER));
+
+        handler().handle(disbanded);
+
+        assertTrue(plain(leader.sent().get(0)).contains("nobody joined"), "the former leader must learn why: " + plain(leader.sent().get(0)));
+    }
+
+    @Test
+    void expiringTellsTheLocalLeaderTheMinutesLeftAndHowToInvite() {
+        PartyEvent expiring = event("party.expiring", LEADER.toString(), member(LEADER, "Alice"), """
+                {"expiresAt":"2026-10-28T10:05:00Z"}""");
+
+        handler().handle(expiring);
+
+        String text = plain(leader.sent().get(0));
+        assertTrue(text.contains("closes in 5 minutes"), "the leader must read the minutes left: " + text);
+        assertTrue(text.contains("/party invite"), "the leader must read how to invite someone: " + text);
+    }
+
+    @Test
+    void expiringRoundsPartOfAMinuteUp() {
+        PartyEvent expiring = event("party.expiring", LEADER.toString(), member(LEADER, "Alice"), """
+                {"expiresAt":"2026-10-28T10:04:30Z"}""");
+
+        handler().handle(expiring);
+
+        assertTrue(plain(leader.sent().get(0)).contains("closes in 5 minutes"), "4 minutes 30 seconds must read as 5 minutes");
+    }
+
+    @Test
+    void expiringIsNotSentToMembersWhoAreNotTheLeader() {
+        PartyEvent expiring = event("party.expiring", LEADER.toString(), """
+                %s,%s""".formatted(member(LEADER, "Alice"), member(FOLLOWER_IN_LOBBY, "Bob")), """
+                {"expiresAt":"2026-10-28T10:05:00Z"}""");
+
+        handler().handle(expiring);
+
+        assertEquals(1, leader.sent().size(), "the leader is told");
+        assertTrue(lobbyFollower.sent().isEmpty(), "a member who is not the leader is not told about the warning");
     }
 
     @Test

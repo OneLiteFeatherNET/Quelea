@@ -13,6 +13,10 @@ import net.onelitefeather.quelea.velocity.player.ConnectOutcome;
 import net.onelitefeather.quelea.velocity.player.LocalPlayer;
 import net.onelitefeather.quelea.velocity.player.LocalPlayers;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,14 +27,18 @@ import java.util.UUID;
  */
 public final class EventHandler {
 
+    private static final String EXPIRED_ALONE = "expired-alone";
+
     private final LocalPlayers players;
     private final Messages messages;
     private final FollowPolicy follow;
+    private final Clock clock;
 
-    public EventHandler(LocalPlayers players, Messages messages, FollowPolicy follow) {
+    public EventHandler(LocalPlayers players, Messages messages, FollowPolicy follow, Clock clock) {
         this.players = players;
         this.messages = messages;
         this.follow = follow;
+        this.clock = clock;
     }
 
     public void handle(PartyEvent event) {
@@ -43,6 +51,7 @@ public final class EventHandler {
             case "party.kicked" -> notifyMembers(event, event.field("playerId"), "party.kicked", playerName(event));
             case "party.leader-changed" -> leaderChanged(event);
             case "party.disbanded" -> disbanded(event);
+            case "party.expiring" -> expiring(event);
             case "party.warp" -> warp(event);
             case "party.chat" -> chat(event);
             default -> {
@@ -102,9 +111,29 @@ public final class EventHandler {
         if (!event.payload().has("formerMembers") || !event.payload().get("formerMembers").isJsonArray()) {
             return;
         }
+        // Unknown reasons keep the generic message, so the service can add reasons without a plugin release.
+        String key = EXPIRED_ALONE.equals(event.field("reason")) ? "party.disbanded.expired-alone" : "party.disbanded";
         for (PlayerRef former : QueleaJson.players(event.payload().getAsJsonArray("formerMembers"))) {
-            sendTo(former.id(), "party.disbanded");
+            sendTo(former.id(), key);
         }
+    }
+
+    /** Tells the leader, if local, how many minutes the lonely party has left, rounded up. */
+    private void expiring(PartyEvent event) {
+        String leaderId = event.leaderId();
+        String expiresAt = event.field("expiresAt");
+        if (leaderId == null || expiresAt == null) {
+            return;
+        }
+        Instant expiry;
+        try {
+            expiry = Instant.parse(expiresAt);
+        } catch (DateTimeParseException e) {
+            return;
+        }
+        long seconds = Math.max(0, Duration.between(clock.instant(), expiry).getSeconds());
+        long minutes = Math.max(1, (seconds + 59) / 60);
+        sendTo(leaderId, "party.expiring", Placeholder.unparsed("minutes", Long.toString(minutes)));
     }
 
     private void warp(PartyEvent event) {

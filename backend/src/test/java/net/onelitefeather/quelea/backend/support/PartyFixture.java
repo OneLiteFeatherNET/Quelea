@@ -2,6 +2,7 @@ package net.onelitefeather.quelea.backend.support;
 
 import net.onelitefeather.quelea.backend.party.PartyService;
 import net.onelitefeather.quelea.backend.party.PartySettings;
+import net.onelitefeather.quelea.backend.party.port.LockService;
 import net.onelitefeather.quelea.backend.presence.PlayerPresence;
 import net.onelitefeather.quelea.backend.presence.PresenceService;
 import net.onelitefeather.quelea.backend.presence.PresenceSettings;
@@ -23,11 +24,11 @@ public final class PartyFixture {
     public final PresenceSettings presenceSettings = new PresenceSettings();
     public final PartyService partyService;
     public final PresenceService presenceService;
+    public final LockService locks = new InMemoryLockService(Duration.ofSeconds(1));
 
     public PartyFixture() {
         partySettings.setMaxSize(3);
         partySettings.setInviteTtl(Duration.ofSeconds(60));
-        InMemoryLockService locks = new InMemoryLockService(Duration.ofSeconds(1));
         partyService = new PartyService(parties, presence, locks, events, partySettings, clock);
         presenceService = new PresenceService(presence, parties, partyService, presenceSettings, clock);
     }

@@ -22,6 +22,10 @@ flowchart LR
 
 Events are delivered at most once. A proxy that reconnects does not receive events it missed, so a warp that was lost can be repeated with `/party warp`.
 
+**Lonely parties.** A party that still has only its creator after `QUELEA_PARTY_ALONE_TIMEOUT` is disbanded. `QUELEA_PARTY_ALONE_WARNING` before that, the service publishes `party.expiring` with the expiry time, and the proxy tells the leader how many minutes are left. Expired parties are disbanded with the reason `expired-alone`. Every `party.disbanded` event carries a `reason`: `leader` (the leader disbanded), `last-member-left` (only one member remained) or `expired-alone`. Clients must treat an unknown reason like `leader`.
+
+**Event streams.** Each stream of `GET /v1/events` identifies its client with `clientId` (`proxyId` is accepted as an alias). A client that falls more than `QUELEA_SSE_BUFFER` events behind has its stream closed and counted in `quelea.sse.disconnects{reason="overflow"}`; it must reconnect and take a fresh snapshot.
+
 ## Modules
 
 | Module    | Artifact / output                                  | Purpose                                                                 |
@@ -65,8 +69,12 @@ Set these on the service. Defaults are in `backend/src/main/resources/applicatio
 | `QUELEA_REDIS_LOCK_WAIT`       | `1s`                        | How long a request waits for a busy party lock before it fails with `lock-timeout`. |
 | `QUELEA_PARTY_MAX_SIZE`        | `8`                         | Maximum members per party, counting the leader. Minimum 2.                    |
 | `QUELEA_INVITE_TTL`            | `60s`                       | How long an invite stays valid. Re-inviting refreshes it.                     |
+| `QUELEA_PARTY_ALONE_TIMEOUT`   | `30m`                       | A party that has only its creator for this long is disbanded with reason `expired-alone`. |
+| `QUELEA_PARTY_ALONE_WARNING`   | `5m`                        | `party.expiring` is published this long before the expiry. `0s` disables the warning. |
+| `QUELEA_PARTY_EXPIRY_INTERVAL` | `15s`                       | How often the expiry job runs; one replica per run, under a lock. The expiry can be this late. |
 | `QUELEA_PROXY_TIMEOUT`         | `45s`                       | A proxy without a heartbeat for this long is treated as dead; its players are disconnected from their parties. |
 | `QUELEA_SSE_KEEPALIVE`         | `15s`                       | Interval of the keep-alive comment on idle event streams.                     |
+| `QUELEA_SSE_BUFFER`            | `256`                       | Events one stream may hold unread. A stream that overflows is closed.         |
 | `LOG_JSON`                     | `false`                     | `true` writes logs as JSON with `trace_id` and `span_id`.                     |
 | `OTEL_TRACES_EXPORTER`         | `none`                      | Set to `otlp` to export traces.                                               |
 | `OTEL_EXPORTER_OTLP_ENDPOINT`  | `http://localhost:4317`     | OTLP gRPC endpoint for traces.                                                |
