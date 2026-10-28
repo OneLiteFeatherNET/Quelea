@@ -27,6 +27,12 @@ Common fields: `type`, `title`, `status`, `detail`, `instance` (the request path
 - **When:** the path exists, but not for this HTTP method.
 - **What to do:** use the method listed in the OpenAPI document for that path.
 
+## unsupported-media-type
+
+- **Status:** 415
+- **When:** the request body is sent with a content type other than `application/json`.
+- **What to do:** send the body as JSON with `Content-Type: application/json`.
+
 ## party-not-found
 
 - **Status:** 404

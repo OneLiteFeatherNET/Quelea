@@ -10,6 +10,7 @@ public enum PartyProblem {
     VALIDATION_FAILED("validation-failed", HttpStatus.BAD_REQUEST, "Validation failed"),
     NOT_FOUND("not-found", HttpStatus.NOT_FOUND, "Not found"),
     METHOD_NOT_ALLOWED("method-not-allowed", HttpStatus.METHOD_NOT_ALLOWED, "Method not allowed"),
+    UNSUPPORTED_MEDIA_TYPE("unsupported-media-type", HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type"),
     PARTY_NOT_FOUND("party-not-found", HttpStatus.NOT_FOUND, "Party not found"),
     NOT_IN_PARTY("not-in-party", HttpStatus.NOT_FOUND, "Player is not in a party"),
     ALREADY_IN_PARTY("already-in-party", HttpStatus.CONFLICT, "Player is already in a party"),

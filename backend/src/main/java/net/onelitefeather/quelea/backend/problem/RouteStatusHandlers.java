@@ -30,4 +30,11 @@ public class RouteStatusHandlers {
         return factory.response(factory.create(PartyProblem.METHOD_NOT_ALLOWED,
                 request.getMethodName() + " is not supported for " + request.getPath() + ".", request));
     }
+
+    @Error(status = HttpStatus.UNSUPPORTED_MEDIA_TYPE, global = true)
+    public HttpResponse<Problem> unsupportedMediaType(HttpRequest<?> request) {
+        String contentType = request.getContentType().map(Object::toString).orElse("no content type");
+        return factory.response(factory.create(PartyProblem.UNSUPPORTED_MEDIA_TYPE,
+                "The body of " + request.getPath() + " must be application/json, not " + contentType + ".", request));
+    }
 }

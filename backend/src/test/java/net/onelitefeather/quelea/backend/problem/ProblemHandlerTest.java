@@ -116,6 +116,17 @@ class ProblemHandlerTest {
     }
 
     @Test
+    void wrongContentTypeAnswers415UnsupportedMediaTypeAsProblem() throws Exception {
+        Result result = send(HttpRequest.POST("/test/body", "message=hi")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED_TYPE));
+        Problem problem = problemOf(result);
+
+        assertEquals(415, result.status(), "a body in a media type the route does not accept must answer 415");
+        assertEquals("unsupported-media-type", problem.code());
+        assertEquals(MediaType.of(Problem.MEDIA_TYPE).toString(), result.contentType());
+    }
+
+    @Test
     void unexpectedExceptionAnswers500WithFixedDetail() throws Exception {
         Result result = send(HttpRequest.GET("/test/internal"));
         Problem problem = problemOf(result);
