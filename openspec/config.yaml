@@ -1,0 +1,34 @@
+schema: spec-driven
+
+# Project context: the architecture and product principles of the Quelea party system. A proposal,
+# spec, design or task list must not contradict these. Changing a principle is itself an OpenSpec
+# change that edits this block and says why.
+context: |
+  Quelea is the party system of the OneLiteFeather Minecraft network (one deployment per network).
+  Modules: backend (Micronaut 5, Java 25), client (Java client generated from the backend's OpenAPI
+  document), velocity (Velocity proxy plugin).
+
+  Principles (non-negotiable unless a change explicitly amends this block):
+  1. Party state is ephemeral and lives in Dragonfly (Redis protocol); no relational database.
+  2. Every backend replica is stateless; cross-replica fan-out goes through Redis pub/sub; proxies
+     receive events over one Server-Sent-Events stream per proxy and resynchronise by reading state
+     after a reconnect.
+  3. Errors are RFC 9457 Problem Details (application/problem+json) from one global handler.
+  4. OpenTelemetry tracing (OTLP), Prometheus metrics at /prometheus, JSON logs with trace ids.
+  5. No auth layer in the service: trust is enforced at the network boundary (internal hostname only).
+  6. Config is env-var driven with local-dev defaults inline in application.yml (${ENV_VAR:default}).
+  7. Tests follow F.I.R.S.T.: unit tests use in-memory fakes and an injected java.time.Clock; Redis
+     integration tests use Testcontainers and are tagged `integration`.
+
+  Commits and PR titles follow Conventional Commits (release-please).
+
+rules:
+  proposal:
+    - Name the Conventional Commits type and scope the change ships under; a change mixing types is two changes.
+  specs:
+    - Write requirements in EARS form with Given/When/Then scenarios.
+  design:
+    - Record rejected alternatives.
+  tasks:
+    - The last task opens the code pull request under the proposal's Conventional Commits title.
+    - Checkboxes are ticked in a follow-up pull request, never in the code pull request.
