@@ -19,7 +19,8 @@ class MessagesTest {
 
     /** The problem codes of docs/problems.md, plus the plugin's own unavailable message. */
     private static final List<String> PROBLEM_CODES = List.of(
-            "validation-failed", "not-found", "method-not-allowed", "unsupported-media-type", "party-not-found", "not-in-party",
+            "validation-failed", "not-found", "method-not-allowed", "unsupported-media-type", "unauthorized", "forbidden",
+            "precondition-failed", "idempotency-key-reused", "request-in-progress", "party-not-found", "not-in-party",
             "already-in-party", "not-leader", "not-member", "party-full", "player-not-online", "invite-not-found",
             "cannot-target-self", "lock-timeout", "internal-error");
 
