@@ -1,0 +1,71 @@
+micronaut:
+  application:
+    name: quelea
+  server:
+    # HTTP port of the service.
+    port: ${PORT:8080}
+
+# Dragonfly (Redis protocol) holds all party state. Defaults match docker/docker-compose.yml.
+redis:
+  uri: ${REDIS_URI:`redis://localhost:6379`}
+
+quelea:
+  redis:
+    # Prefix for every key the service writes, so several environments can share one Dragonfly.
+    prefix: ${QUELEA_REDIS_PREFIX:quelea:}
+    # Lease of a party lock. Long enough for one party mutation; a holder that stalls past it loses the lock.
+    lock-ttl: ${QUELEA_REDIS_LOCK_TTL:3s}
+    # How long a request waits for a busy party lock before it fails with lock-timeout (503).
+    lock-wait: ${QUELEA_REDIS_LOCK_WAIT:1s}
+  party:
+    # Maximum number of members per party, counting the leader.
+    max-size: ${QUELEA_PARTY_MAX_SIZE:8}
+    # How long an invite stays valid; re-inviting refreshes it.
+    invite-ttl: ${QUELEA_INVITE_TTL:60s}
+  presence:
+    # A proxy that has not sent a heartbeat for this long is treated as dead and its players are disconnected.
+    proxy-timeout: ${QUELEA_PROXY_TIMEOUT:45s}
+    # How often the dead-proxy reaper runs (one replica per sweep, under a lock).
+    reaper-interval: 30s
+  events:
+    # Interval of the keep-alive comment sent on idle event streams.
+    keepalive: ${QUELEA_SSE_KEEPALIVE:15s}
+
+endpoints:
+  all:
+    enabled: false
+  health:
+    enabled: true
+    sensitive: false
+    details-visible: NEVER
+  prometheus:
+    enabled: true
+    sensitive: false
+
+micrometer:
+  metrics:
+    enabled: true
+    export:
+      prometheus:
+        enabled: true
+
+# OpenTelemetry - tracing is disabled unless OTEL_TRACES_EXPORTER=otlp is set (Docker/prod).
+# Metrics stay on Prometheus/Micrometer.
+otel:
+  service:
+    name: ${OTEL_SERVICE_NAME:quelea}
+  traces:
+    # Trace exporter: "otlp" in production, "none" for local runs.
+    exporter: ${OTEL_TRACES_EXPORTER:none}
+  metrics:
+    exporter: none
+  logs:
+    exporter: none
+  exporter:
+    otlp:
+      protocol: grpc
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:`http://localhost:4317`}
+  exclusions:
+    - /health
+    - /health/.*
+    - /prometheus

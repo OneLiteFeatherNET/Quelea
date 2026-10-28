@@ -1,0 +1,41 @@
+<configuration>
+    <property name="LOG_JSON" value="${LOG_JSON:-false}"/>
+
+    <if condition='"true".equalsIgnoreCase(property("LOG_JSON"))'>
+        <then>
+            <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+                <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                    <fieldNames>
+                        <timestamp>timestamp</timestamp>
+                        <message>message</message>
+                        <logger>logger</logger>
+                        <thread>thread</thread>
+                        <level>level</level>
+                    </fieldNames>
+                </encoder>
+            </appender>
+        </then>
+        <else>
+            <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+                <encoder>
+                    <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                </encoder>
+            </appender>
+        </else>
+    </if>
+
+    <appender name="OTEL" class="io.opentelemetry.instrumentation.logback.mdc.v1_0.OpenTelemetryAppender">
+        <appender-ref ref="STDOUT"/>
+    </appender>
+
+    <!-- Request bodies carry party chat messages and player names; the HTTP server and the netty handlers
+         would print them at DEBUG/TRACE, so they are pinned to INFO/WARN here whatever else is raised. -->
+    <logger name="io.micronaut.http.server" level="INFO"/>
+    <logger name="io.micronaut.http.client" level="INFO"/>
+    <logger name="io.netty" level="WARN"/>
+    <logger name="reactor.netty" level="WARN"/>
+
+    <root level="INFO">
+        <appender-ref ref="OTEL"/>
+    </root>
+</configuration>
