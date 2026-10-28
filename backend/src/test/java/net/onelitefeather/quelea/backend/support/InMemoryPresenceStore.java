@@ -84,6 +84,11 @@ public final class InMemoryPresenceStore implements PresenceStore {
     }
 
     @Override
+    public long countOnlinePlayers() {
+        return proxies.stream().mapToLong(proxyId -> proxyPlayers.getOrDefault(proxyId, Set.of()).size()).sum();
+    }
+
+    @Override
     public void forgetProxy(String proxyId) {
         proxies.remove(proxyId);
         aliveUntil.remove(proxyId);

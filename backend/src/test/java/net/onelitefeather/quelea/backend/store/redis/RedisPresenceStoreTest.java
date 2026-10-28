@@ -126,6 +126,17 @@ class RedisPresenceStoreTest {
         assertTrue(store.playersOf("proxy-1").isEmpty());
     }
 
+    @Test
+    void countOnlinePlayersSumsEveryProxy() {
+        store.put(presence(UUID.randomUUID(), "Alpha", "proxy-1"));
+        store.put(presence(UUID.randomUUID(), "Bravo", "proxy-1"));
+        store.put(presence(UUID.randomUUID(), "Charlie", "proxy-2"));
+        store.touchProxy("proxy-1", Duration.ofSeconds(45));
+        store.touchProxy("proxy-2", Duration.ofSeconds(45));
+
+        assertEquals(3L, store.countOnlinePlayers(), "two players on proxy-1 and one on proxy-2 must count as three");
+    }
+
     private static PlayerPresence presence(UUID id, String name, String proxyId) {
         return new PlayerPresence(id, name, proxyId, NOW);
     }

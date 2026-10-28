@@ -1,7 +1,9 @@
 package net.onelitefeather.quelea.backend.support;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import net.onelitefeather.quelea.backend.party.PartyService;
 import net.onelitefeather.quelea.backend.party.PartySettings;
+import net.onelitefeather.quelea.backend.party.PartyStatistics;
 import net.onelitefeather.quelea.backend.party.port.LockService;
 import net.onelitefeather.quelea.backend.presence.PlayerPresence;
 import net.onelitefeather.quelea.backend.presence.PresenceService;
@@ -25,11 +27,12 @@ public final class PartyFixture {
     public final PartyService partyService;
     public final PresenceService presenceService;
     public final LockService locks = new InMemoryLockService(Duration.ofSeconds(1));
+    public final SimpleMeterRegistry meters = new SimpleMeterRegistry();
 
     public PartyFixture() {
         partySettings.setMaxSize(3);
         partySettings.setInviteTtl(Duration.ofSeconds(60));
-        partyService = new PartyService(parties, presence, locks, events, partySettings, clock);
+        partyService = new PartyService(parties, presence, locks, events, partySettings, clock, new PartyStatistics(meters));
         presenceService = new PresenceService(presence, parties, partyService, presenceSettings, clock);
     }
 

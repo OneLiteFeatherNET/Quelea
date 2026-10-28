@@ -125,6 +125,11 @@ The proxy keeps one SSE stream open to the service. The gateway route for the se
 - **Metrics:** pushed over OTLP/HTTP when `QUELEA_METRICS_OTLP_ENABLED=true`, to `QUELEA_METRICS_OTLP_URL` every `QUELEA_METRICS_OTLP_STEP`. There is no scrape endpoint; `/prometheus` answers 404. Names keep their Prometheus form in Mimir, for example `quelea_party_operations_total`. Each replica reports its pod name (`HOSTNAME`) as `service.instance.id`.
   - `quelea_party_operations_total{operation,result}`: service calls by operation and result.
   - `quelea_parties_active`: parties currently stored.
+  - `quelea_parties_created_total`: parties created.
+  - `quelea_parties_disbanded_total{reason}`: parties disbanded, by reason (`leader`, `last-member-left`, `expired-alone`).
+  - `quelea_party_lifetime_seconds_*{reason}`: time from creation to disband, by reason (histogram).
+  - `quelea_party_size_*`: party size after each join, counting the leader (histogram).
+  - `quelea_players_online`: players online on all proxies, read from the presence store.
   - `quelea_sse_streams`: open event streams on this replica.
   - `quelea_events_published_total{type}`: party events published, by type.
   - `quelea_events_failed_total{type}`: party events that could not be published, by type.
