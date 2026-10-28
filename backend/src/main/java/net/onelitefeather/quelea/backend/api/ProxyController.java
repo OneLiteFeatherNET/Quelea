@@ -1,5 +1,7 @@
 package net.onelitefeather.quelea.backend.api;
 
+import io.micronaut.scheduling.TaskExecutors;
+import io.micronaut.scheduling.annotation.ExecuteOn;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
@@ -24,6 +26,8 @@ import java.util.List;
 import java.util.UUID;
 
 @Validated
+// Blocking Dragonfly calls and lock waits: keep them off the Netty event loop.
+@ExecuteOn(TaskExecutors.BLOCKING)
 @Controller("/v1/proxies")
 @Tag(name = "proxies", description = "Presence reported by the Velocity proxies")
 public class ProxyController {

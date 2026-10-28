@@ -1,5 +1,7 @@
 package net.onelitefeather.quelea.backend.api;
 
+import io.micronaut.scheduling.TaskExecutors;
+import io.micronaut.scheduling.annotation.ExecuteOn;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
@@ -23,6 +25,8 @@ import java.util.List;
 import java.util.UUID;
 
 @Validated
+// Blocking Dragonfly calls and lock waits: keep them off the Netty event loop.
+@ExecuteOn(TaskExecutors.BLOCKING)
 @Controller("/v1/players")
 @Tag(name = "players", description = "A player's party membership and invites")
 public class PlayerController {

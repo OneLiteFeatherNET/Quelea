@@ -12,6 +12,8 @@ import io.micronaut.serde.ObjectMapper;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Singleton;
 import net.onelitefeather.quelea.backend.party.port.EventPublisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
@@ -24,6 +26,8 @@ import java.io.IOException;
 public class RedisEventBus implements EventPublisher {
 
     public static final String CHANNEL = "quelea.events";
+
+    private static final Logger LOG = LoggerFactory.getLogger(RedisEventBus.class);
 
     private final StatefulRedisConnection<String, String> connection;
     private final StatefulRedisPubSubConnection<String, String> subscriber;
@@ -51,7 +55,18 @@ public class RedisEventBus implements EventPublisher {
         } catch (IOException e) {
             throw new IllegalStateException("Cannot serialise party event " + event.type(), e);
         }
-        connection.sync().publish(CHANNEL, json);
+        try {
+            connection.sync().publish(CHANNEL, json);
+        } catch (RuntimeException e) {
+            // The state change is already saved and an event is only a hint: count it, never fail the request.
+            LOG.warn("Could not publish party event {}: {}", event.type(), e.getMessage());
+            Counter.builder("quelea.events.failed")
+                    .description("Party events that could not be published, by type")
+                    .tag("type", event.type())
+                    .register(registry)
+                    .increment();
+            return;
+        }
         Counter.builder("quelea.events.published")
                 .description("Party events published, by type")
                 .tag("type", event.type())
