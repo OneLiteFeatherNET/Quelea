@@ -36,7 +36,9 @@ class RedisPartyStoreTest {
 
     @AfterAll
     static void stopDragonfly() {
-        dragonfly.close();
+        if (dragonfly != null) {
+            dragonfly.close();
+        }
     }
 
     @BeforeEach

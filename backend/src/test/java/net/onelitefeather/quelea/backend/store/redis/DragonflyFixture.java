@@ -2,6 +2,8 @@ package net.onelitefeather.quelea.backend.store.redis;
 
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
+import org.junit.jupiter.api.Assumptions;
+import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -28,7 +30,9 @@ final class DragonflyFixture implements AutoCloseable {
         this.connection = client.connect();
     }
 
+    /** Skips the calling test class when no Docker daemon is reachable (e.g. the macOS and Windows CI runners). */
     static DragonflyFixture start() {
+        Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker is not available");
         GenericContainer<?> container = new GenericContainer<>(DockerImageName.parse(IMAGE)).withExposedPorts(6379);
         container.start();
         return new DragonflyFixture(container);
