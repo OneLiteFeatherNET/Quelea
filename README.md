@@ -28,7 +28,7 @@ Events are delivered at most once. A proxy that reconnects does not receive even
 
 **Retries.** A `POST` may carry an `Idempotency-Key` header (1 to 255 visible ASCII characters). The first request with a key runs; a 2xx response is stored for `QUELEA_IDEMPOTENCY_TTL`, and a repeat with the same key and the same request is answered with the stored response without running again. The key is scoped to the authenticated client. The same key with another request answers `422 idempotency-key-reused`; a repeat while the first request is still running answers `409 request-in-progress` with `Retry-After: 1`. Failed responses are not stored, so a retry after an error runs again. The key is kept for `QUELEA_IDEMPOTENCY_LOCK` while a request runs, so a crashed request does not block its key for longer than that.
 
-**Event streams.** Each stream of `GET /v1/events` identifies its client with `clientId` (`proxyId` is accepted as an alias). A client that falls more than `QUELEA_SSE_BUFFER` events behind has its stream closed and counted in `quelea.sse.disconnects{reason="overflow"}`; it must reconnect and take a fresh snapshot.
+**Event streams.** Each stream of `GET /v1/events` identifies its client with `clientId` (`proxyId` is accepted as an alias). A client that falls more than `QUELEA_SSE_BUFFER` events behind has its stream closed and counted in `quelea.sse.disconnects{reason="overflow"}`; it must reconnect and take a fresh snapshot. A stream also ends when the token it was opened with expires, so it never outlives its credentials; the client reconnects with a fresh token and takes a snapshot.
 
 ## Modules
 
