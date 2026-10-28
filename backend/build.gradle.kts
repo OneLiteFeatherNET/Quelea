@@ -91,6 +91,15 @@ tasks.named<io.micronaut.gradle.docker.MicronautDockerfile>("optimizedDockerfile
     instruction("USER 10001:10001")
 }
 
+// The layers keep the file modes of the Gradle cache, where a jar can be owner-only (0600). The image runs as
+// uid 10001, which then cannot read it (e.g. janino, so logback has no console appender). Make the context
+// world-readable before Docker copies it.
+tasks.named("optimizedBuildLayers") {
+    doLast {
+        outputs.files.asFileTree.forEach { it.setReadable(true, false) }
+    }
+}
+
 // Integration tests (@Tag("integration")) need Docker for Testcontainers. Run the rest without it
 // via ./gradlew :backend:test -PexcludeTags=integration.
 tasks.withType<Test>().configureEach {
