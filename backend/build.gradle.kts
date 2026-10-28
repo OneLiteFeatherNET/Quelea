@@ -17,6 +17,8 @@ dependencies {
     implementation(mn.micronaut.micrometer.core)
     implementation(mn.micronaut.micrometer.registry.prometheus)
     implementation(mn.micronaut.serde.jackson)
+    // Reactor carries the SSE event stream (one multicast sink per replica, see event/EventBroadcaster).
+    implementation(mn.micronaut.reactor)
     // Party state lives in Dragonfly (Redis protocol); the adapters arrive with the Redis tasks.
     implementation(mn.micronaut.redis.lettuce)
     implementation(mn.snakeyaml)
