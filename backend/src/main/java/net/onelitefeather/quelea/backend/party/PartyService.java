@@ -84,6 +84,10 @@ public class PartyService {
         if (target.id().equals(actorId)) {
             throw new PartyException(PartyProblem.CANNOT_TARGET_SELF);
         }
+        // Checked before the party is created, so a failed first invite does not leave a party of one behind.
+        if (parties.partyOf(target.id()).isPresent()) {
+            throw new PartyException(PartyProblem.ALREADY_IN_PARTY, target.name() + " is already in a party.");
+        }
         UUID partyId = parties.partyOf(actorId).orElseGet(() -> create(actorId).id());
         return locked(partyId, () -> {
             Party party = require(partyId);

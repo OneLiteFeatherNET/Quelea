@@ -173,6 +173,17 @@ class PartyServiceTest {
     }
 
     @Test
+    void failedFirstInviteLeavesInviterWithoutParty() {
+        PartyFixture f = new PartyFixture();
+        UUID inviter = f.online("Alpha");
+        UUID other = f.online("Charlie");
+        f.partyService.create(other);
+
+        assertProblem(PartyProblem.ALREADY_IN_PARTY, () -> f.partyService.invite(inviter, "Charlie"));
+        assertProblem(PartyProblem.NOT_IN_PARTY, () -> f.partyService.partyOf(inviter));
+    }
+
+    @Test
     void inviteToFullPartyIsPartyFull() {
         PartyFixture f = new PartyFixture();
         UUID leader = f.online("Alpha");
