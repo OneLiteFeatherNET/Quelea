@@ -124,6 +124,21 @@ class HttpQueleaGatewayTest {
     }
 
     @Test
+    void warpSendsTheOriginAsFromServer() {
+        gateway().warp("p-1", "leader-1", "Lobby-2", "Bounce-2");
+
+        assertTrue(lastRequestBody.get().contains("\"fromServer\":\"Bounce-2\""), lastRequestBody.get());
+        assertTrue(lastRequestBody.get().contains("\"server\":\"Lobby-2\""), lastRequestBody.get());
+    }
+
+    @Test
+    void manualWarpOmitsFromServer() {
+        gateway().warp("p-1", "leader-1", "Lobby-2", null);
+
+        assertFalse(lastRequestBody.get().contains("fromServer"), lastRequestBody.get());
+    }
+
+    @Test
     void mapsAProblemDocumentToItsCode() {
         reply = new Reply(403, "application/problem+json", """
                 {"type":"https://github.com/OneLiteFeatherNET/Quelea/blob/main/docs/problems.md#not-leader",

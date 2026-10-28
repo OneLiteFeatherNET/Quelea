@@ -117,6 +117,82 @@ class EventHandlerTest {
         assertTrue(leader.connectRequests().isEmpty(), "the leader is never moved by the warp");
     }
 
+    private static final UUID CO_PLAYER_ON_ORIGIN = UUID.fromString("00000000-0000-0000-0000-00000000000e");
+
+    private EventHandler handler(FollowPolicy policy) {
+        return new EventHandler(players, messages, policy, Clock.fixed(NOW, ZoneOffset.UTC));
+    }
+
+    private static PartyEvent warp(String target, String origin) {
+        String payload = origin == null
+                ? "{\"server\":\"" + target + "\"}"
+                : "{\"server\":\"" + target + "\",\"from\":\"" + origin + "\"}";
+        return event("party.warp", LEADER.toString(), """
+                %s,%s,%s,%s""".formatted(member(LEADER, "Alice"), member(FOLLOWER_IN_LOBBY, "Bob"),
+                member(FOLLOWER_IN_GAME, "Carol"), member(CO_PLAYER_ON_ORIGIN, "Dave")), payload);
+    }
+
+    @Test
+    void leaderLeavingAGameWarpsTheCoPlayerOnTheOriginAndTheLobbyMember() {
+        FakeLocalPlayer coPlayer = new FakeLocalPlayer(CO_PLAYER_ON_ORIGIN, "Dave", Locale.ENGLISH, "Bounce-2");
+        players = new FakeLocalPlayers().with(leader, lobbyFollower, gameFollower, coPlayer);
+
+        handler(lobbyMode).handle(warp("Lobby-2", "Bounce-2"));
+
+        assertEquals(List.of("Lobby-2"), coPlayer.connectRequests(), "the co-player on the game the leader left follows");
+        assertEquals(List.of("Lobby-2"), lobbyFollower.connectRequests(), "a member in a lobby follows");
+        assertTrue(gameFollower.connectRequests().isEmpty(), "a member in another game stays where they are");
+        assertTrue(leader.connectRequests().isEmpty(), "the leader is never moved by the warp");
+    }
+
+    @Test
+    void leaderJoiningAGameWarpsTheLobbyMembersOnly() {
+        FakeLocalPlayer coPlayer = new FakeLocalPlayer(CO_PLAYER_ON_ORIGIN, "Dave", Locale.ENGLISH, "Lobby-1");
+        players = new FakeLocalPlayers().with(leader, lobbyFollower, gameFollower, coPlayer);
+
+        handler(lobbyMode).handle(warp("Bounce-2", "Lobby-1"));
+
+        assertEquals(List.of("Bounce-2"), lobbyFollower.connectRequests(), "the lobby member follows");
+        assertEquals(List.of("Bounce-2"), coPlayer.connectRequests(), "the lobby member follows");
+        assertTrue(gameFollower.connectRequests().isEmpty(), "a member in another game stays where they are");
+    }
+
+    @Test
+    void leaderMovingBetweenLobbiesAlignsTheMembersInTheOtherLobbies() {
+        FakeLocalPlayer otherInstance = new FakeLocalPlayer(CO_PLAYER_ON_ORIGIN, "Dave", Locale.ENGLISH, "Lobby-3");
+        players = new FakeLocalPlayers().with(leader, lobbyFollower, gameFollower, otherInstance);
+
+        handler(lobbyMode).handle(warp("Lobby-2", "Lobby-1"));
+
+        assertEquals(List.of("Lobby-2"), lobbyFollower.connectRequests(), "a member on the leader's old lobby follows");
+        assertEquals(List.of("Lobby-2"), otherInstance.connectRequests(), "a member on another lobby instance follows");
+        assertTrue(gameFollower.connectRequests().isEmpty(), "a member in a game stays where they are");
+    }
+
+    @Test
+    void warpWithoutOriginKeepsTheLobbyRule() {
+        FakeLocalPlayer coPlayer = new FakeLocalPlayer(CO_PLAYER_ON_ORIGIN, "Dave", Locale.ENGLISH, "Bounce-2");
+        players = new FakeLocalPlayers().with(leader, lobbyFollower, gameFollower, coPlayer);
+
+        handler(lobbyMode).handle(warp("Lobby-2", null));
+
+        assertEquals(List.of("Lobby-2"), lobbyFollower.connectRequests(), "the lobby member follows as before");
+        assertTrue(coPlayer.connectRequests().isEmpty(), "without an origin a member in a game does not follow");
+        assertTrue(gameFollower.connectRequests().isEmpty(), "a member in another game stays where they are");
+    }
+
+    @Test
+    void alwaysModeMovesEveryLocalMemberIncludingTheOneInAnotherGame() {
+        FakeLocalPlayer coPlayer = new FakeLocalPlayer(CO_PLAYER_ON_ORIGIN, "Dave", Locale.ENGLISH, "Bounce-2");
+        players = new FakeLocalPlayers().with(leader, lobbyFollower, gameFollower, coPlayer);
+
+        handler(FollowPolicy.of("(?i)^lobby.*", FollowMode.ALWAYS)).handle(warp("Lobby-2", "Bounce-2"));
+
+        assertEquals(List.of("Lobby-2"), gameFollower.connectRequests(), "always: a member in another game follows too");
+        assertEquals(List.of("Lobby-2"), coPlayer.connectRequests(), "always: the co-player follows");
+        assertTrue(leader.connectRequests().isEmpty(), "the leader is never moved by the warp");
+    }
+
     @Test
     void refusedWarpTellsTheMemberWhy() {
         lobbyFollower.refusingConnections();

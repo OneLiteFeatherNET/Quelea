@@ -166,6 +166,8 @@ public final class EventHandler {
         if (server == null) {
             return;
         }
+        // Absent from warps of services that do not name the origin; the lobby rule then applies alone.
+        String origin = event.field("from");
         for (Member member : event.members()) {
             if (member.id().equals(event.leaderId())) {
                 continue;
@@ -173,7 +175,7 @@ public final class EventHandler {
             UUID id = uuid(member.id());
             Optional<LocalPlayer> local = id == null ? Optional.empty() : players.find(id);
             local.ifPresent(player -> {
-                if (!follow.shouldFollow(player.currentServer().orElse(null), server)) {
+                if (!follow.shouldFollow(player.currentServer().orElse(null), server, origin)) {
                     return;
                 }
                 player.connect(server).thenAccept(outcome -> reportWarp(player, server, outcome));

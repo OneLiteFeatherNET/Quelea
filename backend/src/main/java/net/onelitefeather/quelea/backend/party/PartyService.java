@@ -266,11 +266,19 @@ public class PartyService {
 
     /** Runs under the party lock like the other leader commands, so an {@code If-Match} is compared with the current version. */
     public void warp(UUID partyId, UUID actorId, String server, Precondition precondition) {
+        warp(partyId, actorId, server, null, precondition);
+    }
+
+    /** {@code fromServer} is the server the leader left; it is carried as {@code from} when present. */
+    public void warp(UUID partyId, UUID actorId, String server, String fromServer, Precondition precondition) {
         locked(partyId, () -> {
             Party party = require(partyId);
             precondition.check(party);
             requireLeader(party, actorId);
-            publish(PartyEventType.WARP, party, Map.of("server", server));
+            Map<String, Object> payload = fromServer == null
+                    ? Map.of("server", server)
+                    : Map.of("server", server, "from", fromServer);
+            publish(PartyEventType.WARP, party, payload);
             return null;
         });
     }

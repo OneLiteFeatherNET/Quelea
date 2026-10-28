@@ -132,10 +132,13 @@ public final class HttpQueleaGateway implements QueleaGateway {
     }
 
     @Override
-    public void warp(String partyId, String actorId, String server) {
+    public void warp(String partyId, String actorId, String server, String fromServer) {
         JsonObject body = new JsonObject();
         body.addProperty("actorId", actorId);
         body.addProperty("server", server);
+        if (fromServer != null) {
+            body.addProperty("fromServer", fromServer);
+        }
         call("POST", partyRoute(partyId) + "/warp", body);
     }
 

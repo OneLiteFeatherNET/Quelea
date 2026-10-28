@@ -131,6 +131,28 @@ class PartiesControllerTest {
     }
 
     @Test
+    void warpWithOriginAnswers202() {
+        UUID leader = api.login(PROXY, name("lead"));
+        String partyId = create(leader).json().get("id").asText();
+
+        Response response = api.postJson("/v1/parties/" + partyId + "/warp",
+                "{\"actorId\":\"" + leader + "\",\"server\":\"Lobby-1\",\"fromServer\":\"Bounce-2\"}");
+
+        assertEquals(202, response.status());
+    }
+
+    @Test
+    void warpWithOriginLongerThan64CharactersAnswers400() {
+        UUID leader = api.login(PROXY, name("lead"));
+        String partyId = create(leader).json().get("id").asText();
+
+        Response response = api.postJson("/v1/parties/" + partyId + "/warp",
+                "{\"actorId\":\"" + leader + "\",\"server\":\"Lobby-1\",\"fromServer\":\"" + "x".repeat(65) + "\"}");
+
+        assertEquals(400, response.status(), "an origin longer than 64 characters is an invalid body");
+    }
+
+    @Test
     void chatAnswers202() {
         UUID leader = api.login(PROXY, name("lead"));
         String partyId = create(leader).json().get("id").asText();

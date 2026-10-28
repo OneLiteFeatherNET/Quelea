@@ -18,7 +18,7 @@ flowchart LR
     R2 <--> D
 ```
 
-**Follow rule.** When the proxy sees the party leader connect to a server that does not match the lobby pattern (`QUELEA_LOBBY_PATTERN`), it asks the service to warp the party. Every proxy then moves its local members to that exact server. With the default follow mode `lobby`, only members who are in a lobby follow; members already in another game stay where they are.
+**Follow rule.** Whenever the proxy sees the party leader move from one server to another, it asks the service to warp the party to the new server and names the server the leader left. Every proxy then moves its local members to that exact server. With the default follow mode `lobby`, a member follows if they were on the server the leader left (they were together) or if they are in a lobby (`QUELEA_LOBBY_PATTERN`); a member in another game stays where they are. So a round that ends brings the party back to the lobby with its leader, and a lobby hop drags the other lobby members along. The leader's first connection after login warps nothing.
 
 Events are delivered at most once. A proxy that reconnects does not receive events it missed, so a warp that was lost can be repeated with `/party warp`.
 

@@ -193,7 +193,8 @@ public class PartyController {
     public void warp(@PathVariable UUID partyId, @Body @Valid WarpRequest request,
                      @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.IF_MATCH, description = IF_MATCH_DESCRIPTION)
                      @Nullable @Header(HttpHeaders.IF_MATCH) String ifMatch) {
-        metrics.run("warp", () -> parties.warp(partyId, request.actorId(), request.server(), new Precondition(ifMatch)));
+        metrics.run("warp", () -> parties.warp(partyId, request.actorId(), request.server(), request.fromServer(),
+                new Precondition(ifMatch)));
     }
 
     @Post("/{partyId}/chat")

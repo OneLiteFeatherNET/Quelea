@@ -33,7 +33,10 @@ public interface QueleaGateway {
 
     void disband(String partyId, String actorId);
 
-    void warp(String partyId, String actorId, String server);
+    /**
+     * @param fromServer the server the leader left, or {@code null} when the warp does not name one
+     */
+    void warp(String partyId, String actorId, String server, String fromServer);
 
     void chat(String partyId, String actorId, String message);
 
