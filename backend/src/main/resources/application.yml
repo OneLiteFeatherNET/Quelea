@@ -14,6 +14,8 @@ micronaut:
         step: ${QUELEA_METRICS_OTLP_STEP:60s}
         # Kubernetes sets HOSTNAME to the pod name; without a per-pod instance id the replicas' series overwrite each other.
         resource-attributes: service.name=${OTEL_SERVICE_NAME:quelea},service.instance.id=${HOSTNAME:local}
+        # Timers are exported in seconds, so Mimir gets the *_seconds_* series that the dashboards read.
+        base-time-unit: seconds
 
   # Resource server only: Entra ID app-only bearer tokens, no login flow, no session. A route without an @Secured
   # rule is rejected. The token must be signed by the issuer's JWKS (quelea.auth.jwks-url), come from the issuer

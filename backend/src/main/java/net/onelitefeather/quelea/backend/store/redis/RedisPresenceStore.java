@@ -101,6 +101,16 @@ public class RedisPresenceStore implements PresenceStore {
     }
 
     @Override
+    public long countOnlinePlayers() {
+        long total = 0;
+        for (String proxyId : proxies()) {
+            Long online = commands.scard(keys.proxyPlayers(proxyId));
+            total += online == null ? 0 : online;
+        }
+        return total;
+    }
+
+    @Override
     public void forgetProxy(String proxyId) {
         commands.del(keys.proxyPlayers(proxyId));
         commands.del(keys.proxyAlive(proxyId));

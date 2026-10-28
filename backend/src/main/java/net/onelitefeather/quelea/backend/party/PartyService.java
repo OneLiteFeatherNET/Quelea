@@ -43,15 +43,17 @@ public class PartyService {
     private final EventPublisher events;
     private final PartySettings settings;
     private final Clock clock;
+    private final PartyStatistics statistics;
 
     public PartyService(PartyStore parties, PresenceStore presence, LockService locks, EventPublisher events,
-                        PartySettings settings, Clock clock) {
+                        PartySettings settings, Clock clock, PartyStatistics statistics) {
         this.parties = parties;
         this.presence = presence;
         this.locks = locks;
         this.events = events;
         this.settings = settings;
         this.clock = clock;
+        this.statistics = statistics;
     }
 
     public Party create(UUID leaderId) {
@@ -67,6 +69,7 @@ public class PartyService {
         Party party = new Party(partyId, leaderId, List.of(new Member(leaderId, leader.name(), now)), now, 1);
         parties.save(party);
         markAlone(party);
+        statistics.created();
         publish(PartyEventType.CREATED, party, Map.of());
         return party;
     }
@@ -139,6 +142,7 @@ public class PartyService {
             parties.save(joined);
             parties.clearAlone(partyId);
             parties.deleteInvite(partyId, playerId);
+            statistics.joined(joined.members().size());
             publish(PartyEventType.JOINED, joined, Map.of("playerId", playerId, "playerName", invite.targetName()));
             return joined;
         });
@@ -325,6 +329,7 @@ public class PartyService {
         }
         parties.clearAlone(party.id());
         parties.delete(party.id());
+        statistics.disbanded(reason, Duration.between(party.createdAt(), clock.instant()));
         List<Map<String, Object>> formerMembers = new ArrayList<>();
         for (Member member : party.members()) {
             formerMembers.add(Map.of("id", member.id(), "name", member.name()));

@@ -26,5 +26,8 @@ public interface PresenceStore {
 
     Set<String> proxies();
 
+    /** Players online on all known proxies, summed over the per-proxy player sets. */
+    long countOnlinePlayers();
+
     void forgetProxy(String proxyId);
 }

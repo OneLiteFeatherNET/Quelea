@@ -1,9 +1,11 @@
 package net.onelitefeather.quelea.backend.store.redis;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micronaut.serde.ObjectMapper;
 import net.onelitefeather.quelea.backend.party.Party;
 import net.onelitefeather.quelea.backend.party.PartyService;
 import net.onelitefeather.quelea.backend.party.PartySettings;
+import net.onelitefeather.quelea.backend.party.PartyStatistics;
 import net.onelitefeather.quelea.backend.presence.PlayerPresence;
 import net.onelitefeather.quelea.backend.problem.PartyException;
 import net.onelitefeather.quelea.backend.problem.PartyProblem;
@@ -66,7 +68,8 @@ class RedisPartyServiceConcurrencyTest {
         presence = new RedisPresenceStore(dragonfly.connection(), keys, ObjectMapper.getDefault(), clock);
         RedisLockService locks = new RedisLockService(dragonfly.connection(), keys,
                 Duration.ofSeconds(3), Duration.ofSeconds(1));
-        service = new PartyService(parties, presence, locks, new RecordingEventPublisher(), new PartySettings(), clock);
+        service = new PartyService(parties, presence, locks, new RecordingEventPublisher(), new PartySettings(), clock,
+                new PartyStatistics(new SimpleMeterRegistry()));
         leaderA = online("Alpha");
         leaderB = online("Bravo");
         charlie = online("Charlie");
