@@ -3,3 +3,7 @@
 redis:
   enabled: false
   uri: redis://localhost:1
+micronaut:
+  # Every test context starts its own server on a free port, so contexts never collide on 8080.
+  server:
+    port: -1
