@@ -170,6 +170,14 @@ Integration tests use Testcontainers and need a running Docker daemon. They are 
 
 Specifications and the change history live in `openspec/`.
 
+## CI
+
+Every pull request runs:
+
+- **Build:** the shared OneLiteFeather Gradle workflow (`build test`, JDK 25).
+- **API compatibility:** `oasdiff` compares the OpenAPI document of the base with the head and fails on breaking changes. The changelog goes to the job summary (`.github/workflows/api-diff.yml`).
+- **Coverage:** JaCoCo XML and HTML reports for `backend` and `velocity`, uploaded to Codecov and as a workflow artifact. Coverage has no threshold and never fails the build (`.github/workflows/build-pr.yml`).
+
 ## License
 
 [AGPL-3.0](LICENSE)

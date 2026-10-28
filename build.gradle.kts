@@ -20,10 +20,13 @@ subprojects {
             dependsOn(project.tasks.named("test"))
             reports {
                 xml.required.set(true)
+                html.required.set(true)
             }
         }
         getByName<Test>("test") {
             useJUnitPlatform()
+            // Coverage reports follow every test run, so `./gradlew test` leaves them in build/reports/jacoco.
+            finalizedBy("jacocoTestReport")
             testLogging {
                 events("passed", "skipped", "failed")
             }
