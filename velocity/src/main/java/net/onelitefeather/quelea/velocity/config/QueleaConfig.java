@@ -1,5 +1,6 @@
 package net.onelitefeather.quelea.velocity.config;
 
+import net.onelitefeather.quelea.velocity.auth.ClientCredentials;
 import net.onelitefeather.quelea.velocity.follow.FollowMode;
 
 import java.io.IOException;
@@ -21,8 +22,10 @@ import java.util.regex.Pattern;
  * @param proxyId     this proxy's id, a random UUID per start when not configured
  * @param lobbyPattern regex that marks lobby server names
  * @param followMode  which members follow a warp
+ * @param credentials the app registration used to get tokens; incomplete values mean the plugin sends no token
  */
-public record QueleaConfig(String url, String proxyId, String lobbyPattern, FollowMode followMode) {
+public record QueleaConfig(String url, String proxyId, String lobbyPattern, FollowMode followMode,
+                           ClientCredentials credentials) {
 
     public static final String FILE_NAME = "config.properties";
 
@@ -30,6 +33,10 @@ public record QueleaConfig(String url, String proxyId, String lobbyPattern, Foll
     public static final String ENV_PROXY_ID = "QUELEA_PROXY_ID";
     public static final String ENV_LOBBY_PATTERN = "QUELEA_LOBBY_PATTERN";
     public static final String ENV_FOLLOW_MODE = "QUELEA_FOLLOW_MODE";
+    public static final String ENV_TENANT_ID = "QUELEA_TENANT_ID";
+    public static final String ENV_CLIENT_ID = "QUELEA_CLIENT_ID";
+    public static final String ENV_CLIENT_SECRET = "QUELEA_CLIENT_SECRET";
+    public static final String ENV_AUTH_SCOPE = "QUELEA_AUTH_SCOPE";
 
     public static final String DEFAULT_URL = "http://localhost:8080";
     public static final String DEFAULT_LOBBY_PATTERN = "(?i)^lobby.*";
@@ -45,6 +52,9 @@ public record QueleaConfig(String url, String proxyId, String lobbyPattern, Foll
         Pattern.compile(lobbyPattern);
         if (followMode == null) {
             throw new IllegalArgumentException("followMode must be set");
+        }
+        if (credentials == null) {
+            throw new IllegalArgumentException("credentials must be set");
         }
     }
 
@@ -70,7 +80,12 @@ public record QueleaConfig(String url, String proxyId, String lobbyPattern, Foll
                 pick(env, ENV_URL, properties, "url", DEFAULT_URL),
                 proxyId == null ? UUID.randomUUID().toString() : proxyId,
                 pick(env, ENV_LOBBY_PATTERN, properties, "lobby-pattern", DEFAULT_LOBBY_PATTERN),
-                FollowMode.parse(pick(env, ENV_FOLLOW_MODE, properties, "follow-mode", DEFAULT_FOLLOW_MODE)));
+                FollowMode.parse(pick(env, ENV_FOLLOW_MODE, properties, "follow-mode", DEFAULT_FOLLOW_MODE)),
+                new ClientCredentials(
+                        pick(env, ENV_TENANT_ID, properties, "tenant-id", null),
+                        pick(env, ENV_CLIENT_ID, properties, "client-id", null),
+                        pick(env, ENV_CLIENT_SECRET, properties, "client-secret", null),
+                        pick(env, ENV_AUTH_SCOPE, properties, "auth-scope", null)));
     }
 
     private static String pick(Function<String, String> env, String envKey, Properties properties, String key,
@@ -108,6 +123,22 @@ public record QueleaConfig(String url, String proxyId, String lobbyPattern, Foll
 
                     # Who follows a warp: lobby (only members in a lobby) or always. QUELEA_FOLLOW_MODE
                     #follow-mode=lobby
+
+                    # Entra ID app registration of this plugin (see docs/entra-setup.md). Without all four values the
+                    # plugin sends no token and only a dev backend accepts its requests. Prefer the environment
+                    # for client-secret.
+
+                    # Entra tenant id (GUID or domain). QUELEA_TENANT_ID
+                    #tenant-id=
+
+                    # Client id of the plugin's app registration. QUELEA_CLIENT_ID
+                    #client-id=
+
+                    # Secret of that app registration. QUELEA_CLIENT_SECRET
+                    #client-secret=
+
+                    # Scope of the token, api://<client id of the Quelea API>/.default. QUELEA_AUTH_SCOPE
+                    #auth-scope=
                     """);
         }
     }

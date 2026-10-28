@@ -9,6 +9,8 @@ import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.scheduler.ScheduledTask;
+import net.onelitefeather.quelea.velocity.auth.ClientCredentialsTokenProvider;
+import net.onelitefeather.quelea.velocity.auth.JdkTokenTransport;
 import net.onelitefeather.quelea.velocity.command.PartyActions;
 import net.onelitefeather.quelea.velocity.command.PartyCommands;
 import net.onelitefeather.quelea.velocity.config.QueleaConfig;
@@ -35,6 +37,7 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -72,9 +75,18 @@ public final class QueleaVelocity {
             return;
         }
 
+        Optional<ClientCredentialsTokenProvider> tokens = Optional.empty();
+        if (config.credentials().isComplete()) {
+            tokens = Optional.of(new ClientCredentialsTokenProvider(config.credentials(), new JdkTokenTransport(),
+                    Clock.systemUTC()));
+        } else {
+            logger.warn("Quelea has no complete Entra credentials (missing {}): no token is sent, so only a dev "
+                    + "party service accepts this plugin", config.credentials().missing());
+        }
+
         executor = Executors.newVirtualThreadPerTaskExecutor();
         httpClient = HttpQueleaGateway.newClient();
-        QueleaGateway gateway = new HttpQueleaGateway(config.url(), httpClient);
+        QueleaGateway gateway = new HttpQueleaGateway(config.url(), httpClient, tokens);
         Messages messages = Messages.load();
         FollowPolicy follow = FollowPolicy.of(config.lobbyPattern(), config.followMode());
         VelocityLocalPlayers localPlayers = new VelocityLocalPlayers(proxy);
@@ -91,6 +103,7 @@ public final class QueleaVelocity {
         eventStream = new EventStream(
                 httpClient,
                 HttpQueleaGateway.eventsUri(config.url(), config.proxyId()),
+                tokens,
                 () -> gateway.snapshot(config.proxyId(), snapshot(localPlayers)),
                 message -> handler.handle(PartyEvent.parse(message.data())),
                 new Backoff(Duration.ofSeconds(1), Duration.ofSeconds(30)),

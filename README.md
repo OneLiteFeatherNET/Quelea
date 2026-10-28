@@ -99,6 +99,12 @@ On the first start the plugin creates this file with commented defaults. Each va
 | `proxy-id`      | `QUELEA_PROXY_ID`     | random UUID per start     | Name of this proxy in the service. Set it to keep a stable identity.   |
 | `lobby-pattern` | `QUELEA_LOBBY_PATTERN`| `(?i)^lobby.*`            | Regex for lobby server names. Moves to other servers warp the party.    |
 | `follow-mode`   | `QUELEA_FOLLOW_MODE`  | `lobby`                   | Which members follow a warp: `lobby` (only members in a lobby) or `always`. |
+| `tenant-id`     | `QUELEA_TENANT_ID`    | none                      | Entra tenant (GUID or domain) of the plugin's app registration.          |
+| `client-id`     | `QUELEA_CLIENT_ID`    | none                      | Client id of the plugin's app registration.                              |
+| `client-secret` | `QUELEA_CLIENT_SECRET`| none                      | Secret of that app registration. Prefer the environment for it.          |
+| `auth-scope`    | `QUELEA_AUTH_SCOPE`   | none                      | Token scope, `api://<client id of the Quelea API>/.default`.             |
+
+The four credential values come from the Entra app registration of the plugin, described in [`docs/entra-setup.md`](docs/entra-setup.md). Without all of them the plugin sends no token, logs one warning at start-up, and only a `dev` party service accepts its requests.
 
 ## Installing the plugin
 
