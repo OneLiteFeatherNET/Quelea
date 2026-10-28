@@ -2,6 +2,7 @@ package net.onelitefeather.quelea.velocity.event;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import net.onelitefeather.quelea.velocity.follow.FollowPolicy;
@@ -28,6 +29,7 @@ import java.util.UUID;
 public final class EventHandler {
 
     private static final String EXPIRED_ALONE = "expired-alone";
+    private static final String DISBANDED_BY_LEADER = "leader";
 
     private final LocalPlayers players;
     private final Messages messages;
@@ -43,12 +45,14 @@ public final class EventHandler {
 
     public void handle(PartyEvent event) {
         switch (event.type()) {
-            case "party.created" -> notifyMembers(event, null, "party.created", Placeholder.unparsed("player", leaderName(event)));
+            case "party.created" -> notifyMembers(event, event.leaderId(), null, "party.created",
+                    Placeholder.unparsed("player", leaderName(event)));
             case "party.invited" -> invited(event);
-            case "party.joined" -> notifyMembers(event, event.field("playerId"), "party.joined", playerName(event));
-            case "party.denied" -> notifyMembers(event, event.field("playerId"), "party.denied", playerName(event));
-            case "party.left" -> notifyMembers(event, event.field("playerId"), "party.left", playerName(event));
-            case "party.kicked" -> notifyMembers(event, event.field("playerId"), "party.kicked", playerName(event));
+            case "party.joined" -> notifyOthers(event, "party.joined", playerName(event));
+            case "party.denied" -> notifyOthers(event, "party.denied", playerName(event));
+            case "party.left" -> notifyOthers(event, "party.left", playerName(event));
+            case "party.kicked" -> notifyMembers(event, event.leaderId(), event.field("playerId"), "party.kicked",
+                    playerName(event));
             case "party.leader-changed" -> leaderChanged(event);
             case "party.disbanded" -> disbanded(event);
             case "party.expiring" -> expiring(event);
@@ -67,10 +71,15 @@ public final class EventHandler {
             return;
         }
         players.find(target).ifPresent(player -> {
+            TagResolver inviter = Placeholder.unparsed("inviter", inviterName);
             Component accept = messages.line(player.locale(), "party.invite.accept")
-                    .clickEvent(ClickEvent.runCommand("/party accept " + inviterName));
+                    .clickEvent(ClickEvent.runCommand("/party accept " + inviterName))
+                    .hoverEvent(HoverEvent.showText(
+                            messages.line(player.locale(), "party.invite.accept.hover", inviter)));
             Component deny = messages.line(player.locale(), "party.invite.deny")
-                    .clickEvent(ClickEvent.runCommand("/party deny " + inviterName));
+                    .clickEvent(ClickEvent.runCommand("/party deny " + inviterName))
+                    .hoverEvent(HoverEvent.showText(
+                            messages.line(player.locale(), "party.invite.deny.hover", inviter)));
             player.send(messages.message(player.locale(), "party.invited",
                             Placeholder.unparsed("inviter", inviterName))
                     .append(Component.space())
@@ -82,26 +91,37 @@ public final class EventHandler {
 
     /**
      * Sends {@code key} to the members of the event, and {@code key.self} to the affected player (who may not be a
-     * member any more). The affected player never gets both.
+     * member any more). The actor of the command never gets either: their command answer already says it.
+     *
+     * @param actorId    the player who ran the command, or {@code null} when the event does not name one
+     * @param affectedId the player the change is about, or {@code null}
      */
-    private void notifyMembers(PartyEvent event, String affectedId, String key, TagResolver... resolvers) {
-        if (affectedId != null) {
+    private void notifyMembers(PartyEvent event, String actorId, String affectedId, String key,
+                               TagResolver... resolvers) {
+        if (affectedId != null && !affectedId.equals(actorId)) {
             sendTo(affectedId, key + ".self", resolvers);
         }
         for (Member member : event.members()) {
-            if (!member.id().equals(affectedId)) {
+            if (!member.id().equals(affectedId) && !member.id().equals(actorId)) {
                 sendTo(member.id(), key, resolvers);
             }
         }
     }
 
+    /** For events where the actor is the affected player: everyone else in the party hears about it. */
+    private void notifyOthers(PartyEvent event, String key, TagResolver... resolvers) {
+        String actorId = event.field("playerId");
+        notifyMembers(event, actorId, actorId, key, resolvers);
+    }
+
     private void leaderChanged(PartyEvent event) {
         String leaderId = event.leaderId();
-        if (leaderId != null) {
+        String actorId = event.field("previousLeaderId");
+        if (leaderId != null && !leaderId.equals(actorId)) {
             sendTo(leaderId, "party.leader-changed.self");
         }
         for (Member member : event.members()) {
-            if (!member.id().equals(leaderId)) {
+            if (!member.id().equals(leaderId) && !member.id().equals(actorId)) {
                 sendTo(member.id(), "party.leader-changed", Placeholder.unparsed("player", leaderName(event)));
             }
         }
@@ -112,9 +132,14 @@ public final class EventHandler {
             return;
         }
         // Unknown reasons keep the generic message, so the service can add reasons without a plugin release.
-        String key = EXPIRED_ALONE.equals(event.field("reason")) ? "party.disbanded.expired-alone" : "party.disbanded";
+        String reason = event.field("reason");
+        String key = EXPIRED_ALONE.equals(reason) ? "party.disbanded.expired-alone" : "party.disbanded";
+        // A leader who disbanded the party already read the command's answer.
+        String actor = DISBANDED_BY_LEADER.equals(reason) ? event.leaderId() : null;
         for (PlayerRef former : QueleaJson.players(event.payload().getAsJsonArray("formerMembers"))) {
-            sendTo(former.id(), key);
+            if (!former.id().equals(actor)) {
+                sendTo(former.id(), key);
+            }
         }
     }
 

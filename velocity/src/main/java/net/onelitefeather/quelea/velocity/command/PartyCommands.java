@@ -125,18 +125,6 @@ public final class PartyCommands {
 
     private net.kyori.adventure.text.Component help(CommandSource source) {
         Locale locale = source instanceof Player player ? player.getEffectiveLocale() : Locale.ENGLISH;
-        return messages.message(locale, "command.help.title")
-                .append(net.kyori.adventure.text.Component.newline())
-                .append(messages.line(locale, "command.help.create")).append(net.kyori.adventure.text.Component.newline())
-                .append(messages.line(locale, "command.help.invite")).append(net.kyori.adventure.text.Component.newline())
-                .append(messages.line(locale, "command.help.accept")).append(net.kyori.adventure.text.Component.newline())
-                .append(messages.line(locale, "command.help.deny")).append(net.kyori.adventure.text.Component.newline())
-                .append(messages.line(locale, "command.help.leave")).append(net.kyori.adventure.text.Component.newline())
-                .append(messages.line(locale, "command.help.list")).append(net.kyori.adventure.text.Component.newline())
-                .append(messages.line(locale, "command.help.kick")).append(net.kyori.adventure.text.Component.newline())
-                .append(messages.line(locale, "command.help.promote")).append(net.kyori.adventure.text.Component.newline())
-                .append(messages.line(locale, "command.help.disband")).append(net.kyori.adventure.text.Component.newline())
-                .append(messages.line(locale, "command.help.warp")).append(net.kyori.adventure.text.Component.newline())
-                .append(messages.line(locale, "command.help.chat"));
+        return HelpText.of(messages, locale);
     }
 }

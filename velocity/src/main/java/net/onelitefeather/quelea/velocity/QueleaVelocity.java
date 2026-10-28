@@ -87,7 +87,7 @@ public final class QueleaVelocity {
         executor = Executors.newVirtualThreadPerTaskExecutor();
         httpClient = HttpQueleaGateway.newClient();
         QueleaGateway gateway = new HttpQueleaGateway(config.url(), httpClient, tokens);
-        Messages messages = Messages.load();
+        Messages messages = Messages.load(dataDirectory.resolve("lang"), logger);
         FollowPolicy follow = FollowPolicy.of(config.lobbyPattern(), config.followMode());
         VelocityLocalPlayers localPlayers = new VelocityLocalPlayers(proxy);
 

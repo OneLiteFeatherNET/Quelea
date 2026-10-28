@@ -10,7 +10,10 @@ import net.onelitefeather.quelea.velocity.player.FakeLocalPlayer;
 import net.onelitefeather.quelea.velocity.player.FakeLocalPlayers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.slf4j.LoggerFactory;
 
+import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -31,7 +34,10 @@ class EventHandlerTest {
     private static final UUID OFFLINE_MEMBER = UUID.fromString("00000000-0000-0000-0000-00000000000d");
     private static final Instant NOW = Instant.parse("2026-10-28T10:00:00Z");
 
-    private final Messages messages = Messages.load();
+    @TempDir
+    Path overrides;
+
+    private Messages messages;
     private final FollowPolicy lobbyMode = FollowPolicy.of("(?i)^lobby.*", FollowMode.LOBBY);
 
     private FakeLocalPlayer leader;
@@ -41,6 +47,7 @@ class EventHandlerTest {
 
     @BeforeEach
     void setUp() {
+        messages = Messages.load(overrides, LoggerFactory.getLogger(EventHandlerTest.class));
         leader = new FakeLocalPlayer(LEADER, "Alice", Locale.ENGLISH, "Lobby-1");
         lobbyFollower = new FakeLocalPlayer(FOLLOWER_IN_LOBBY, "Bob", Locale.ENGLISH, "Lobby-1");
         gameFollower = new FakeLocalPlayer(FOLLOWER_IN_GAME, "Carol", Locale.ENGLISH, "Tamias-1");
@@ -138,6 +145,19 @@ class EventHandlerTest {
     }
 
     @Test
+    void disbandByTheLeaderDoesNotNotifyTheLeaderAgain() {
+        PartyEvent disbanded = event("party.disbanded", LEADER.toString(), "", """
+                {"formerMembers":[%s,%s],"reason":"leader"}""".formatted(
+                "{\"id\":\"" + LEADER + "\",\"name\":\"Alice\"}",
+                "{\"id\":\"" + FOLLOWER_IN_LOBBY + "\",\"name\":\"Bob\"}"));
+
+        handler().handle(disbanded);
+
+        assertTrue(leader.sent().isEmpty(), "the disbanding leader reads only the command answer");
+        assertEquals(1, lobbyFollower.sent().size(), "the former member is told");
+    }
+
+    @Test
     void disbandedWithOtherReasonKeepsTheGenericMessage() {
         PartyEvent disbanded = event("party.disbanded", LEADER.toString(), "", """
                 {"formerMembers":[{"id":"%s","name":"Alice"}],"reason":"last-member-left"}""".formatted(LEADER));
@@ -192,17 +212,94 @@ class EventHandlerTest {
     }
 
     @Test
-    void joinedNotifiesMembersAndGivesTheNewMemberTheirOwnMessage() {
+    void acceptNotifiesTheOtherMembersButNotTheJoiner() {
         PartyEvent joined = event("party.joined", LEADER.toString(), """
                 %s,%s""".formatted(member(LEADER, "Alice"), member(FOLLOWER_IN_LOBBY, "Bob")), """
                 {"playerId":"%s","playerName":"Bob"}""".formatted(FOLLOWER_IN_LOBBY));
 
         handler().handle(joined);
 
-        assertEquals(1, lobbyFollower.sent().size(), "the joining player gets exactly one message");
-        assertTrue(plain(lobbyFollower.sent().get(0)).contains("You joined"), plain(lobbyFollower.sent().get(0)));
+        assertTrue(lobbyFollower.sent().isEmpty(), "the joiner reads only the command answer");
         assertEquals(1, leader.sent().size(), "the leader is told about the new member");
         assertTrue(plain(leader.sent().get(0)).contains("Bob"), plain(leader.sent().get(0)));
+    }
+
+    @Test
+    void createDoesNotNotifyTheLeaderWhoRanTheCommand() {
+        PartyEvent created = event("party.created", LEADER.toString(), member(LEADER, "Alice"), "{}");
+
+        handler().handle(created);
+
+        assertTrue(leader.sent().isEmpty(), "the leader reads only the command answer");
+    }
+
+    @Test
+    void kickNotifiesTheKickedPlayerAndTheOtherMembersButNotTheLeader() {
+        PartyEvent kicked = event("party.kicked", LEADER.toString(), """
+                %s,%s""".formatted(member(LEADER, "Alice"), member(FOLLOWER_IN_GAME, "Carol")), """
+                {"playerId":"%s","playerName":"Bob"}""".formatted(FOLLOWER_IN_LOBBY));
+
+        handler().handle(kicked);
+
+        assertTrue(leader.sent().isEmpty(), "the kicking leader reads only the command answer");
+        assertEquals(1, lobbyFollower.sent().size(), "the kicked player is told");
+        assertEquals(1, gameFollower.sent().size(), "the other member is told");
+    }
+
+    @Test
+    void leaveNotifiesTheRemainingMembersButNotTheLeaver() {
+        PartyEvent left = event("party.left", LEADER.toString(), member(LEADER, "Alice"), """
+                {"playerId":"%s","playerName":"Bob"}""".formatted(FOLLOWER_IN_LOBBY));
+
+        handler().handle(left);
+
+        assertTrue(lobbyFollower.sent().isEmpty(), "the leaver reads only the command answer");
+        assertEquals(1, leader.sent().size(), "the remaining member is told");
+    }
+
+    @Test
+    void promoteNotifiesTheNewLeaderAndOthersButNotThePreviousLeader() {
+        PartyEvent promoted = event("party.leader-changed", FOLLOWER_IN_LOBBY.toString(), """
+                %s,%s,%s""".formatted(member(LEADER, "Alice"), member(FOLLOWER_IN_LOBBY, "Bob"),
+                member(FOLLOWER_IN_GAME, "Carol")), """
+                {"previousLeaderId":"%s","leaderId":"%s"}""".formatted(LEADER, FOLLOWER_IN_LOBBY));
+
+        handler().handle(promoted);
+
+        assertTrue(leader.sent().isEmpty(), "the previous leader reads only the command answer");
+        assertEquals(1, lobbyFollower.sent().size(), "the new leader is told");
+        assertTrue(plain(lobbyFollower.sent().get(0)).contains("new party leader"), plain(lobbyFollower.sent().get(0)));
+        assertEquals(1, gameFollower.sent().size(), "the other member is told");
+    }
+
+    @Test
+    void denyNotifiesTheMembersButNotTheDecliner() {
+        PartyEvent denied = event("party.denied", LEADER.toString(), member(LEADER, "Alice"), """
+                {"playerId":"%s","playerName":"Bob"}""".formatted(FOLLOWER_IN_LOBBY));
+
+        handler().handle(denied);
+
+        assertTrue(lobbyFollower.sent().isEmpty(), "the decliner reads only the command answer");
+        assertEquals(1, leader.sent().size(), "the leader is told");
+    }
+
+    @Test
+    void inviteButtonsExplainThemselvesOnHover() {
+        PartyEvent invited = event("party.invited", LEADER.toString(), "", """
+                {"inviterId":"%s","inviterName":"Alice","targetId":"%s","targetName":"Bob",
+                 "expiresAt":"2026-10-28T10:01:00Z"}""".formatted(LEADER, FOLLOWER_IN_LOBBY));
+
+        handler().handle(invited);
+
+        assertTrue(hovers(lobbyFollower.sent().get(0)) >= 2, "[Accept] and [Deny] both have hover text");
+    }
+
+    private static int hovers(Component component) {
+        int count = component.hoverEvent() == null ? 0 : 1;
+        for (Component child : component.children()) {
+            count += hovers(child);
+        }
+        return count;
     }
 
     @Test
@@ -216,8 +313,8 @@ class EventHandlerTest {
         handler().handle(chat);
 
         assertEquals(1, leader.sent().size());
-        assertEquals("[Party] Alice: gg", plain(leader.sent().get(0)));
-        assertEquals("[Party] Alice: gg", plain(german.sent().get(0)), "chat lines carry no translated text");
+        assertEquals("Party │ Alice » gg", plain(leader.sent().get(0)));
+        assertEquals("Party │ Alice » gg", plain(german.sent().get(0)), "chat lines carry no translated text");
     }
 
     @Test
