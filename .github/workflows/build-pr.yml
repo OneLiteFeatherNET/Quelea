@@ -17,3 +17,50 @@ jobs:
       java-distribution: "temurin"
       run-tests: true
     secrets: inherit
+
+  # The shared gradle-build-pr workflow has no coverage upload, so this job follows Ingot: a JaCoCo run of both
+  # test modules published to Codecov. It runs the suite a second time next to the shared build; the cost is
+  # accepted to keep the coverage independent of the reusable workflow. Codecov runs with fail_ci_if_error false
+  # and no threshold, so coverage never fails the build.
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    env:
+      ONELITEFEATHER_MAVEN_USERNAME: ${{ secrets.ONELITEFEATHER_MAVEN_USERNAME }}
+      ONELITEFEATHER_MAVEN_PASSWORD: ${{ secrets.ONELITEFEATHER_MAVEN_PASSWORD }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Run tests with coverage
+        run: ./gradlew :backend:test :velocity:test jacocoTestReport
+
+      - name: Upload JaCoCo reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: jacoco-reports
+          path: |
+            backend/build/reports/jacoco/
+            velocity/build/reports/jacoco/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v6.0.2
+        with:
+          files: backend/build/reports/jacoco/test/jacocoTestReport.xml,velocity/build/reports/jacoco/test/jacocoTestReport.xml
+          fail_ci_if_error: false
+          # Tokenless uploads are rate limited. Set CODECOV_TOKEN in the repository secrets.
+          token: ${{ secrets.CODECOV_TOKEN }}
