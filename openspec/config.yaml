@@ -10,12 +10,16 @@ context: |
 
   Principles (non-negotiable unless a change explicitly amends this block):
   1. Party state is ephemeral and lives in Dragonfly (Redis protocol); no relational database.
-  2. Every backend replica is stateless; cross-replica fan-out goes through Redis pub/sub; proxies
-     receive events over one Server-Sent-Events stream per proxy and resynchronise by reading state
-     after a reconnect.
+  2. Every backend replica is stateless; cross-replica fan-out goes through Redis pub/sub; every
+     client (proxy, lobby server, tool) holds its own Server-Sent-Events stream, never a relay over
+     Minecraft plugin messaging; a stream that overflows its bounded buffer is closed, and clients
+     resynchronise by reading state after a reconnect.
   3. Errors are RFC 9457 Problem Details (application/problem+json) from one global handler.
-  4. OpenTelemetry tracing (OTLP), Prometheus metrics at /prometheus, JSON logs with trace ids.
-  5. No auth layer in the service: trust is enforced at the network boundary (internal hostname only).
+  4. OpenTelemetry tracing and metrics over OTLP (metrics through the Micrometer OTLP registry),
+     JSON logs with trace ids.
+  5. Every client authenticates with an Entra ID app-only token carrying the app role
+     `Quelea.Client`; only health and the API documentation are anonymous. Rate limiting lives in
+     Envoy Gateway, not in the service.
   6. Config is env-var driven with local-dev defaults inline in application.yml (${ENV_VAR:default}).
   7. Tests follow F.I.R.S.T.: unit tests use in-memory fakes and an injected java.time.Clock; Redis
      integration tests use Testcontainers and are tagged `integration`.
