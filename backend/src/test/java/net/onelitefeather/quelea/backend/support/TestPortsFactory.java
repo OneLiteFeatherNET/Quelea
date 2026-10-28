@@ -4,6 +4,7 @@ import io.micronaut.context.annotation.Factory;
 import io.micronaut.context.annotation.Replaces;
 import io.micronaut.context.annotation.Requires;
 import jakarta.inject.Singleton;
+import net.onelitefeather.quelea.backend.idempotency.IdempotencyStore;
 import net.onelitefeather.quelea.backend.party.port.LockService;
 import net.onelitefeather.quelea.backend.party.port.PartyStore;
 import net.onelitefeather.quelea.backend.party.port.PresenceStore;
@@ -39,6 +40,11 @@ public class TestPortsFactory {
     @Singleton
     PresenceStore presenceStore(Clock clock) {
         return new InMemoryPresenceStore(clock);
+    }
+
+    @Singleton
+    IdempotencyStore idempotencyStore(Clock clock) {
+        return new InMemoryIdempotencyStore(clock);
     }
 
     @Singleton

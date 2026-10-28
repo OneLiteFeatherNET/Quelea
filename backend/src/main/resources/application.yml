@@ -95,6 +95,11 @@ quelea:
     proxy-timeout: ${QUELEA_PROXY_TIMEOUT:45s}
     # How often the dead-proxy reaper runs (one replica per sweep, under a lock).
     reaper-interval: 30s
+  idempotency:
+    # How long the response of a completed request is replayed for its Idempotency-Key.
+    ttl: ${QUELEA_IDEMPOTENCY_TTL:24h}
+    # Marker of a request in progress: a duplicate within this time answers 409 request-in-progress.
+    lock: ${QUELEA_IDEMPOTENCY_LOCK:10s}
   events:
     # Interval of the keep-alive comment sent on idle event streams.
     keepalive: ${QUELEA_SSE_KEEPALIVE:15s}

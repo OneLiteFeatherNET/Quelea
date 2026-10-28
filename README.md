@@ -26,6 +26,8 @@ Events are delivered at most once. A proxy that reconnects does not receive even
 
 **Party versions and conditional requests.** Every party has a `version`: 1 when it is created, +1 with every change. It is in the party JSON and in every event. `GET /v1/parties/{id}` and `GET /v1/players/{id}/party` send it as a strong `ETag` (for example `"4"`) and answer `304 Not Modified` without a body when `If-None-Match` names the current tag. `kick`, `promote`, `disband` and `warp` accept `If-Match` with one or more strong tags or `*`. If none matches the current version, the command changes nothing and answers `412 precondition-failed`. A weak tag (`W/`) never matches. Without the header the command runs unconditionally.
 
+**Retries.** A `POST` may carry an `Idempotency-Key` header (1 to 255 visible ASCII characters). The first request with a key runs; a 2xx response is stored for `QUELEA_IDEMPOTENCY_TTL`, and a repeat with the same key and the same request is answered with the stored response without running again. The key is scoped to the authenticated client. The same key with another request answers `422 idempotency-key-reused`; a repeat while the first request is still running answers `409 request-in-progress` with `Retry-After: 1`. Failed responses are not stored, so a retry after an error runs again. The key is kept for `QUELEA_IDEMPOTENCY_LOCK` while a request runs, so a crashed request does not block its key for longer than that.
+
 **Event streams.** Each stream of `GET /v1/events` identifies its client with `clientId` (`proxyId` is accepted as an alias). A client that falls more than `QUELEA_SSE_BUFFER` events behind has its stream closed and counted in `quelea.sse.disconnects{reason="overflow"}`; it must reconnect and take a fresh snapshot.
 
 ## Modules
@@ -77,6 +79,8 @@ Set these on the service. Defaults are in `backend/src/main/resources/applicatio
 | `QUELEA_PROXY_TIMEOUT`         | `45s`                       | A proxy without a heartbeat for this long is treated as dead; its players are disconnected from their parties. |
 | `QUELEA_SSE_KEEPALIVE`         | `15s`                       | Interval of the keep-alive comment on idle event streams.                     |
 | `QUELEA_SSE_BUFFER`            | `256`                       | Events one stream may hold unread. A stream that overflows is closed.         |
+| `QUELEA_IDEMPOTENCY_TTL`       | `24h`                       | How long the response of a completed `POST` is replayed for its `Idempotency-Key`. |
+| `QUELEA_IDEMPOTENCY_LOCK`      | `10s`                       | Marker of a request in progress. A duplicate within this time answers `409 request-in-progress`. |
 | `QUELEA_AUTH_ISSUER`           | `http://localhost:18090/quelea` | Token issuer (`iss`). Outside `dev`/`test` it must be an https URL, for example `https://login.microsoftonline.com/<tenant>/v2.0`. |
 | `QUELEA_AUTH_AUDIENCE`         | `quelea-api`                | Token audience (`aud`). Outside `dev`/`test` the client id GUID of the Quelea API registration. |
 | `QUELEA_AUTH_TENANT_ID`        | empty                       | Entra tenant id; tokens of another tenant are refused. Required outside `dev`/`test`. |
@@ -128,6 +132,14 @@ The proxy keeps one SSE stream open to the service. The gateway route for the se
 - **Traces:** OpenTelemetry over OTLP when `OTEL_TRACES_EXPORTER=otlp`. The trace context is carried inside each event, so a warp can be traced from the leader's request to the fan-out.
 - **Logs:** plain text by default; JSON with `LOG_JSON=true`.
 - **Errors:** every error is an RFC 9457 Problem Details document (`application/problem+json`) with a stable `code`, for example `party-full` or `not-leader`. Each code and what to do about it is documented in [docs/problems.md](docs/problems.md). Quote the `traceId` from the response when you report a problem.
+
+## Rolling out authentication
+
+The plugin must be rolled out before the backend enforces authentication, because the 0.1.0 plugin cannot authenticate:
+
+1. Create the Entra app registrations (see [docs/entra-setup.md](docs/entra-setup.md)).
+2. Release the plugin and install it on the proxies with its client credentials (`QUELEA_TENANT_ID`, `QUELEA_CLIENT_ID`, `QUELEA_CLIENT_SECRET`, `QUELEA_AUTH_SCOPE`). The 0.1.0 backend ignores the new headers, so this step is safe.
+3. Update the backend with the `QUELEA_AUTH_*` values (`QUELEA_AUTH_ISSUER`, `QUELEA_AUTH_AUDIENCE`, `QUELEA_AUTH_TENANT_ID`, `QUELEA_AUTH_JWKS_URL`). From this point every route except `/health` and the API documentation requires a token.
 
 ## Development
 
