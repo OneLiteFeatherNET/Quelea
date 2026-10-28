@@ -20,6 +20,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -108,6 +109,29 @@ class EventStreamTest {
         assertEquals("connect:proxyId=proxy-test", next());
         assertEquals("snapshot", next(), "the snapshot goes out before the first event is read");
         assertEquals("event:11111111-1111-1111-1111-111111111111:party.created", next());
+    }
+
+    @Test
+    void reconnectsWhenTheSnapshotFails() throws InterruptedException {
+        AtomicInteger snapshots = new AtomicInteger();
+        stream = new EventStream(
+                HttpQueleaGateway.newClient(),
+                eventsUri(),
+                () -> {
+                    seen.add("snapshot");
+                    if (snapshots.incrementAndGet() == 1) {
+                        throw new IllegalStateException("snapshot rejected");
+                    }
+                },
+                message -> { },
+                new Backoff(Duration.ofSeconds(1), Duration.ofSeconds(30)),
+                delay -> { },
+                LoggerFactory.getLogger(EventStreamTest.class));
+        stream.start();
+
+        assertEquals("connect:proxyId=proxy-test", next());
+        assertEquals("snapshot", next());
+        assertEquals("connect:proxyId=proxy-test", next(), "a failed snapshot must lead to a reconnect, not a dead stream");
     }
 
     @Test

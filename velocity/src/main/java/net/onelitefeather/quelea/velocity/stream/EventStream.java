@@ -76,6 +76,9 @@ public final class EventStream {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return;
+            } catch (RuntimeException e) {
+                // E.g. a rejected snapshot: the stream must reconnect, never end the reader thread.
+                logger.error("Event stream failed unexpectedly", e);
             }
             if (!running) {
                 return;
