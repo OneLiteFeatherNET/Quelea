@@ -1,0 +1,13 @@
+# docker compose up -d
+services:
+  # Dragonfly is wire-compatible with Redis: REDIS_URI=redis://localhost:6379 points the backend at it.
+  # The tag is pinned to a release verified on the registry (v1.27.1).
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.27.1
+    container_name: 'dragonfly_quelea'
+    ulimits:
+      memlock: -1
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./dragonfly/data/:/data

@@ -5,3 +5,28 @@ allprojects {
     group = "net.onelitefeather"
     version = (version as String).substringBefore('#').trim()
 }
+
+subprojects {
+    apply(plugin = "java")
+    apply(plugin = "jacoco")
+
+    tasks {
+        getByName<JavaCompile>("compileJava") {
+            // Matches the toolchain (JavaLanguageVersion 25).
+            options.release.set(25)
+            options.encoding = "UTF-8"
+        }
+        getByName<JacocoReport>("jacocoTestReport") {
+            dependsOn(project.tasks.named("test"))
+            reports {
+                xml.required.set(true)
+            }
+        }
+        getByName<Test>("test") {
+            useJUnitPlatform()
+            testLogging {
+                events("passed", "skipped", "failed")
+            }
+        }
+    }
+}
