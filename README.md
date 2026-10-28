@@ -58,6 +58,20 @@ Events are delivered at most once. A proxy that reconnects does not receive even
 
 Messages are shown in English or German, following the player's client language.
 
+### Languages and message overrides
+
+The plugin ships English and German. A player sees the bundle for their client locale: `de_DE`, then `de`, then `en`. A key that is missing in the chosen bundle is shown in English, so a partial translation never shows a raw key.
+
+To change or add messages without a new release, put a file named `messages_<tag>.properties` into `plugins/quelea/lang/` on the proxy (for example in the proxy template, next to `config.properties`):
+
+- **Override single messages:** `messages_de.properties` with only the keys to change. Every other German text stays built in.
+- **Add a language:** `messages_fr.properties` translates the keys it wants; the rest of the messages are English until they are translated.
+- **Regional variants:** `messages_de_AT.properties` is used for Austrian clients and falls back to `de`, then `en`.
+
+The files are read once at proxy start-up, so restart the proxy after a change. Each value is a MiniMessage template. Copy the keys from the built-in `messages_en.properties` in the plugin jar (`lang/`), and keep the placeholders (`<name>`, `<count>`, `<server>` and so on) as they are. If a template does not parse, the proxy logs a warning naming the key and language, and that message is shown in English.
+
+The colour guide at the top of `messages_en.properties` explains which colour means what (commands, arguments, errors, hints, the leader's star).
+
 ## Configuration
 
 ### Backend (environment variables)

@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 /**
@@ -24,11 +24,11 @@ import java.util.stream.Collectors;
 public final class PartyActions {
 
     private final QueleaGateway gateway;
-    private final ExecutorService executor;
+    private final Executor executor;
     private final Messages messages;
     private final Logger logger;
 
-    public PartyActions(QueleaGateway gateway, ExecutorService executor, Messages messages, Logger logger) {
+    public PartyActions(QueleaGateway gateway, Executor executor, Messages messages, Logger logger) {
         this.gateway = gateway;
         this.executor = executor;
         this.messages = messages;
@@ -54,7 +54,7 @@ public final class PartyActions {
      */
     public void accept(LocalPlayer player, String inviter) {
         run(player, locale -> {
-            Optional<Invite> invite = chooseInvite(player, locale, inviter);
+            Optional<Invite> invite = chooseInvite(player, locale, inviter, true);
             if (invite.isEmpty()) {
                 return;
             }
@@ -68,7 +68,7 @@ public final class PartyActions {
      */
     public void deny(LocalPlayer player, String inviter) {
         run(player, locale -> {
-            Optional<Invite> invite = chooseInvite(player, locale, inviter);
+            Optional<Invite> invite = chooseInvite(player, locale, inviter, false);
             if (invite.isEmpty()) {
                 return;
             }
@@ -139,27 +139,33 @@ public final class PartyActions {
                 gateway.chat(party.id(), player.id().toString(), message));
     }
 
-    private Optional<Invite> chooseInvite(LocalPlayer player, Locale locale, String inviter) {
-        List<Invite> invites = gateway.invites(player.id().toString());
-        if (invites.isEmpty()) {
-            player.send(messages.message(locale, "command.invites.none"));
-            return Optional.empty();
-        }
-        if (inviter == null) {
-            if (invites.size() == 1) {
-                return Optional.of(invites.get(0));
-            }
+    /**
+     * The invite a command refers to. Sends the answer and returns empty when there is none to pick. An accept with no
+     * matching invite from a player who is already in a party answers that they are already in it: that is what a
+     * second click on an old [Accept] button means.
+     */
+    private Optional<Invite> chooseInvite(LocalPlayer player, Locale locale, String inviter, boolean accepting) {
+        String playerId = player.id().toString();
+        List<Invite> invites = gateway.invites(playerId);
+        if (inviter == null && invites.size() > 1) {
             player.send(messages.message(locale, "command.invites.ambiguous",
                     Placeholder.unparsed("names", invites.stream().map(Invite::inviterName).collect(Collectors.joining(", ")))));
             return Optional.empty();
         }
         Optional<Invite> match = invites.stream()
-                .filter(invite -> invite.inviterName().equalsIgnoreCase(inviter))
+                .filter(invite -> inviter == null || invite.inviterName().equalsIgnoreCase(inviter))
                 .findFirst();
-        if (match.isEmpty()) {
+        if (match.isPresent()) {
+            return match;
+        }
+        if (accepting && gateway.partyOf(playerId).isPresent()) {
+            player.send(messages.message(locale, "command.accept.already-member"));
+        } else if (invites.isEmpty()) {
+            player.send(messages.message(locale, "command.invites.none"));
+        } else {
             player.send(messages.message(locale, "command.invites.unknown", Placeholder.unparsed("name", inviter)));
         }
-        return match;
+        return Optional.empty();
     }
 
     private void withParty(LocalPlayer player, PartyAction action) {
