@@ -7,7 +7,6 @@
   "packages": {
     ".": {
       "package-name": "quelea",
-      "release-type": "java",
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
         {
