@@ -25,6 +25,8 @@ public final class InMemoryPartyStore implements PartyStore {
     private final Map<UUID, Party> parties = new ConcurrentHashMap<>();
     private final Map<UUID, UUID> bindings = new ConcurrentHashMap<>();
     private final Map<InviteKey, StoredInvite> invites = new ConcurrentHashMap<>();
+    private final Map<UUID, Instant> warnings = new ConcurrentHashMap<>();
+    private final Map<UUID, Instant> expiries = new ConcurrentHashMap<>();
 
     public InMemoryPartyStore(Clock clock) {
         this.clock = clock;
@@ -96,6 +98,43 @@ public final class InMemoryPartyStore implements PartyStore {
     @Override
     public long countParties() {
         return parties.size();
+    }
+
+    @Override
+    public void markAlone(UUID partyId, Instant expireAt, Instant warnAt) {
+        expiries.put(partyId, expireAt);
+        if (warnAt != null) {
+            warnings.put(partyId, warnAt);
+        }
+    }
+
+    @Override
+    public void clearAlone(UUID partyId) {
+        warnings.remove(partyId);
+        expiries.remove(partyId);
+    }
+
+    @Override
+    public List<UUID> dueWarnings(Instant now) {
+        return due(warnings, now);
+    }
+
+    @Override
+    public List<UUID> dueExpiries(Instant now) {
+        return due(expiries, now);
+    }
+
+    @Override
+    public void clearWarning(UUID partyId) {
+        warnings.remove(partyId);
+    }
+
+    private static List<UUID> due(Map<UUID, Instant> entries, Instant now) {
+        return entries.entrySet().stream()
+                .filter(entry -> !entry.getValue().isAfter(now))
+                .sorted(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .toList();
     }
 
     private boolean isLive(StoredInvite stored) {

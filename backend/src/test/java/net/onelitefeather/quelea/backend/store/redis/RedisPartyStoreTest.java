@@ -204,4 +204,42 @@ class RedisPartyStoreTest {
     private static Invite invite(UUID partyId, UUID targetId) {
         return new Invite(partyId, UUID.randomUUID(), "Inviter", targetId, "Target", NOW.plusSeconds(60));
     }
+
+    @Test
+    void aloneWarningIsDueOnlyFromItsTime() {
+        UUID party = UUID.randomUUID();
+        store.markAlone(party, NOW.plus(Duration.ofMinutes(30)), NOW.plus(Duration.ofMinutes(25)));
+
+        assertTrue(store.dueWarnings(NOW.plus(Duration.ofMinutes(24))).isEmpty(), "no warning may be due before its time");
+        assertEquals(List.of(party), store.dueWarnings(NOW.plus(Duration.ofMinutes(25))), "the warning must be due at its time");
+    }
+
+    @Test
+    void aloneExpiryIsDueOnlyFromItsTime() {
+        UUID party = UUID.randomUUID();
+        store.markAlone(party, NOW.plus(Duration.ofMinutes(30)), NOW.plus(Duration.ofMinutes(25)));
+
+        assertTrue(store.dueExpiries(NOW.plus(Duration.ofMinutes(29))).isEmpty(), "no expiry may be due before its time");
+        assertEquals(List.of(party), store.dueExpiries(NOW.plus(Duration.ofMinutes(30))), "the expiry must be due at its time");
+    }
+
+    @Test
+    void markWithoutWarningAddsNoWarning() {
+        UUID party = UUID.randomUUID();
+        store.markAlone(party, NOW.plus(Duration.ofMinutes(30)), null);
+
+        assertTrue(store.dueWarnings(NOW.plus(Duration.ofHours(1))).isEmpty(), "a party marked without warning must never be warned");
+        assertEquals(List.of(party), store.dueExpiries(NOW.plus(Duration.ofHours(1))), "the expiry must still be scheduled");
+    }
+
+    @Test
+    void clearAloneRemovesBothEntries() {
+        UUID party = UUID.randomUUID();
+        store.markAlone(party, NOW.plus(Duration.ofMinutes(30)), NOW.plus(Duration.ofMinutes(25)));
+
+        store.clearAlone(party);
+
+        assertTrue(store.dueWarnings(NOW.plus(Duration.ofHours(1))).isEmpty(), "a cleared party must not be warned");
+        assertTrue(store.dueExpiries(NOW.plus(Duration.ofHours(1))).isEmpty(), "a cleared party must not expire");
+    }
 }

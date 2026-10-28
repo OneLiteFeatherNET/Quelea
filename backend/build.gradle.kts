@@ -45,6 +45,8 @@ dependencies {
     // Redis integration tests (tagged "integration") run against a Redis container (pulls in Testcontainers).
     testImplementation(mn.testcontainers.core)
     testImplementation(mn.testcontainers.redis)
+    // Virtual time for the keep-alive of the event stream (StepVerifier), so tests never wait on the clock.
+    testImplementation("io.projectreactor:reactor-test")
 }
 
 java {

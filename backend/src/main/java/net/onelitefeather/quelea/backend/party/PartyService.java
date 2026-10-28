@@ -32,6 +32,11 @@ import java.util.function.Supplier;
 @Singleton
 public class PartyService {
 
+    /** Disband reasons carried by party.disbanded. */
+    public static final String REASON_LEADER = "leader";
+    public static final String REASON_LAST_MEMBER_LEFT = "last-member-left";
+    public static final String REASON_EXPIRED_ALONE = "expired-alone";
+
     private final PartyStore parties;
     private final PresenceStore presence;
     private final LockService locks;
@@ -61,6 +66,7 @@ public class PartyService {
         Instant now = clock.instant();
         Party party = new Party(partyId, leaderId, List.of(new Member(leaderId, leader.name(), now)), now);
         parties.save(party);
+        markAlone(party);
         publish(PartyEventType.CREATED, party, Map.of());
         return party;
     }
@@ -131,6 +137,7 @@ public class PartyService {
             members.add(new Member(playerId, invite.targetName(), clock.instant()));
             Party joined = party.withMembers(members);
             parties.save(joined);
+            parties.clearAlone(partyId);
             parties.deleteInvite(partyId, playerId);
             publish(PartyEventType.JOINED, joined, Map.of("playerId", playerId, "playerName", invite.targetName()));
             return joined;
@@ -159,7 +166,7 @@ public class PartyService {
                 throw new PartyException(PartyProblem.NOT_IN_PARTY, "The player is not in a party.");
             }
             removeMember(party, member, PartyEventType.LEFT,
-                    Map.of("playerId", member.id(), "playerName", member.name(), "reason", reason), reason);
+                    Map.of("playerId", member.id(), "playerName", member.name(), "reason", reason));
             return null;
         });
     }
@@ -174,7 +181,7 @@ public class PartyService {
             Member target = party.member(targetId)
                     .orElseThrow(() -> new PartyException(PartyProblem.NOT_MEMBER, "The player is not a member of this party."));
             return removeMember(party, target, PartyEventType.KICKED,
-                    Map.of("playerId", target.id(), "playerName", target.name()), "kick");
+                    Map.of("playerId", target.id(), "playerName", target.name()));
         });
     }
 
@@ -199,7 +206,36 @@ public class PartyService {
         locked(partyId, () -> {
             Party party = require(partyId);
             requireLeader(party, actorId);
-            disbandParty(party, "leader");
+            disbandParty(party, REASON_LEADER);
+            return null;
+        });
+    }
+
+    /**
+     * Disbands a party that still has one member once its alone timeout has passed. Runs under the party lock, so a
+     * join that landed in the meantime keeps the party. Clears the party from the lonely sets either way.
+     */
+    public void expire(UUID partyId) {
+        locked(partyId, () -> {
+            Party party = parties.find(partyId).orElse(null);
+            if (party == null || party.members().size() != 1) {
+                parties.clearAlone(partyId);
+                return null;
+            }
+            disbandParty(party, REASON_EXPIRED_ALONE);
+            return null;
+        });
+    }
+
+    /** Publishes party.expiring once for a party that is still alone; its expiry time comes from the alone timeout. */
+    public void warnExpiring(UUID partyId) {
+        locked(partyId, () -> {
+            parties.clearWarning(partyId);
+            Party party = parties.find(partyId).orElse(null);
+            if (party == null || party.members().size() != 1) {
+                return null;
+            }
+            publish(PartyEventType.EXPIRING, party, Map.of("expiresAt", party.createdAt().plus(settings.getAloneTimeout())));
             return null;
         });
     }
@@ -223,7 +259,7 @@ public class PartyService {
      * Removes {@code gone} (after LEFT or KICKED), then either disbands a party of at most one member or hands
      * leadership to the longest-standing remaining member. Returns the party state after the change.
      */
-    private Party removeMember(Party party, Member gone, PartyEventType type, Map<String, Object> payload, String reason) {
+    private Party removeMember(Party party, Member gone, PartyEventType type, Map<String, Object> payload) {
         List<Member> remaining = party.members().stream()
                 .filter(member -> !member.id().equals(gone.id()))
                 .toList();
@@ -238,7 +274,7 @@ public class PartyService {
         Party after = new Party(party.id(), leaderId, remaining, party.createdAt());
         if (remaining.size() <= 1) {
             publish(type, party.id(), leaderId, remaining, payload);
-            disbandParty(party, reason, remaining);
+            disbandParty(party, REASON_LAST_MEMBER_LEFT, remaining);
             return after;
         }
         parties.save(after);
@@ -259,6 +295,7 @@ public class PartyService {
         for (Member member : stillBound) {
             parties.releasePlayer(member.id(), party.id());
         }
+        parties.clearAlone(party.id());
         parties.delete(party.id());
         List<Map<String, Object>> formerMembers = new ArrayList<>();
         for (Member member : party.members()) {
@@ -266,6 +303,14 @@ public class PartyService {
         }
         publish(PartyEventType.DISBANDED, party.id(), null, List.of(),
                 Map.of("formerMembers", formerMembers, "reason", reason));
+    }
+
+    /** A party of one member expires after the alone timeout and is warned before, unless the warning is off. */
+    private void markAlone(Party party) {
+        Instant expireAt = party.createdAt().plus(settings.getAloneTimeout());
+        Duration warning = settings.getAloneWarning();
+        Instant warnAt = warning.isZero() || warning.isNegative() ? null : expireAt.minus(warning);
+        parties.markAlone(party.id(), expireAt, warnAt);
     }
 
     private <T> T locked(UUID partyId, Supplier<T> action) {

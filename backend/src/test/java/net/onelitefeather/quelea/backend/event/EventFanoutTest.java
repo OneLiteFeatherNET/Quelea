@@ -27,8 +27,8 @@ class EventFanoutTest {
 
     @Test
     void oneMessageReachesEveryReplicasStream() throws IOException {
-        EventBroadcaster replicaOne = new EventBroadcaster(new SimpleMeterRegistry());
-        EventBroadcaster replicaTwo = new EventBroadcaster(new SimpleMeterRegistry());
+        EventBroadcaster replicaOne = new EventBroadcaster(new SimpleMeterRegistry(), 256);
+        EventBroadcaster replicaTwo = new EventBroadcaster(new SimpleMeterRegistry(), 256);
         List<PartyEvent> seenOne = new ArrayList<>();
         List<PartyEvent> seenTwo = new ArrayList<>();
         Disposable one = replicaOne.stream().subscribe(seenOne::add);
@@ -49,7 +49,7 @@ class EventFanoutTest {
 
     @Test
     void deliveredEventKeepsItsIdPayloadAndTraceparent() throws IOException {
-        EventBroadcaster broadcaster = new EventBroadcaster(new SimpleMeterRegistry());
+        EventBroadcaster broadcaster = new EventBroadcaster(new SimpleMeterRegistry(), 256);
         List<PartyEvent> seen = new ArrayList<>();
         Disposable subscription = broadcaster.stream().subscribe(seen::add);
         PartyEvent original = invited();
@@ -67,7 +67,7 @@ class EventFanoutTest {
 
     @Test
     void unparseableMessageIsDroppedWithoutDelivery() {
-        EventBroadcaster broadcaster = new EventBroadcaster(new SimpleMeterRegistry());
+        EventBroadcaster broadcaster = new EventBroadcaster(new SimpleMeterRegistry(), 256);
         List<PartyEvent> seen = new ArrayList<>();
         Disposable subscription = broadcaster.stream().subscribe(seen::add);
         EventFanout fanout = new EventFanout(broadcaster, mapper, OpenTelemetry.noop());

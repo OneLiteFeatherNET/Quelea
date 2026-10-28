@@ -69,6 +69,16 @@ public class RedisKeys {
         return prefix + "proxies";
     }
 
+    /** Sorted set of lonely parties (one member) scored by the epoch millis of their warning. */
+    public String aloneWarn() {
+        return prefix + "parties:alone:warn";
+    }
+
+    /** Sorted set of lonely parties (one member) scored by the epoch millis of their expiry. */
+    public String aloneExpire() {
+        return prefix + "parties:alone:expire";
+    }
+
     /** A distributed lock; {@code name} is the lock name as passed to {@code LockService}. */
     public String lock(String name) {
         return prefix + "lock:" + name;

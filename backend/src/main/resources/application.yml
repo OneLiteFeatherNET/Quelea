@@ -30,6 +30,12 @@ quelea:
     max-size: ${QUELEA_PARTY_MAX_SIZE:8}
     # How long an invite stays valid; re-inviting refreshes it.
     invite-ttl: ${QUELEA_INVITE_TTL:60s}
+    # A party that has only its creator as member for this long is disbanded with reason expired-alone.
+    alone-timeout: ${QUELEA_PARTY_ALONE_TIMEOUT:30m}
+    # party.expiring is published this long before the alone timeout; 0s disables the warning.
+    alone-warning: ${QUELEA_PARTY_ALONE_WARNING:5m}
+    # How often the expiry job runs (one replica per run, under a lock).
+    expiry-interval: ${QUELEA_PARTY_EXPIRY_INTERVAL:15s}
   presence:
     # A proxy that has not sent a heartbeat for this long is treated as dead and its players are disconnected.
     proxy-timeout: ${QUELEA_PROXY_TIMEOUT:45s}
@@ -38,6 +44,8 @@ quelea:
   events:
     # Interval of the keep-alive comment sent on idle event streams.
     keepalive: ${QUELEA_SSE_KEEPALIVE:15s}
+    # Undelivered events one stream may hold; a stream that overflows is closed and the client reconnects.
+    buffer: ${QUELEA_SSE_BUFFER:256}
 
 endpoints:
   all:

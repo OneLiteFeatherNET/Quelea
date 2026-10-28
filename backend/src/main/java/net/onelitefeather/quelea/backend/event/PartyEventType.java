@@ -9,6 +9,7 @@ public enum PartyEventType {
     KICKED("party.kicked"),
     LEADER_CHANGED("party.leader-changed"),
     DISBANDED("party.disbanded"),
+    EXPIRING("party.expiring"),
     WARP("party.warp"),
     CHAT("party.chat");
 

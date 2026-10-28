@@ -89,6 +89,18 @@ class EventStreamTest {
         assertTrue(received.contains("id: "), "every event must carry its id, received: " + received);
     }
 
+    @Test
+    void streamOpensForClientIdWithoutProxyId() {
+        WireStream lobby = new WireStream(server.getURI().resolve("/v1/events?clientId=lobby-wire"));
+        try {
+            String received = lobby.awaitText(KEEP_ALIVE);
+
+            assertTrue(received.contains(KEEP_ALIVE), "a client that only sends clientId must get a stream, received: " + received);
+        } finally {
+            lobby.close();
+        }
+    }
+
     static String name(String prefix) {
         return prefix + UUID.randomUUID().toString().substring(0, 8);
     }

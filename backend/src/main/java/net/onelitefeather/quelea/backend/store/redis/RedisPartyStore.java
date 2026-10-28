@@ -1,5 +1,6 @@
 package net.onelitefeather.quelea.backend.store.redis;
 
+import io.lettuce.core.Range;
 import io.lettuce.core.SetArgs;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
@@ -13,6 +14,7 @@ import net.onelitefeather.quelea.backend.party.port.PartyStore;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -115,6 +117,43 @@ public class RedisPartyStore implements PartyStore {
     @Override
     public long countParties() {
         return commands.scard(keys.parties());
+    }
+
+    @Override
+    public void markAlone(UUID partyId, Instant expireAt, Instant warnAt) {
+        commands.zadd(keys.aloneExpire(), (double) expireAt.toEpochMilli(), partyId.toString());
+        if (warnAt != null) {
+            commands.zadd(keys.aloneWarn(), (double) warnAt.toEpochMilli(), partyId.toString());
+        }
+    }
+
+    @Override
+    public void clearAlone(UUID partyId) {
+        commands.zrem(keys.aloneWarn(), partyId.toString());
+        commands.zrem(keys.aloneExpire(), partyId.toString());
+    }
+
+    @Override
+    public List<UUID> dueWarnings(Instant now) {
+        return due(keys.aloneWarn(), now);
+    }
+
+    @Override
+    public List<UUID> dueExpiries(Instant now) {
+        return due(keys.aloneExpire(), now);
+    }
+
+    @Override
+    public void clearWarning(UUID partyId) {
+        commands.zrem(keys.aloneWarn(), partyId.toString());
+    }
+
+    private List<UUID> due(String sortedSet, Instant now) {
+        List<UUID> partyIds = new ArrayList<>();
+        for (String partyId : commands.zrangebyscore(sortedSet, Range.create(0L, now.toEpochMilli()))) {
+            partyIds.add(UUID.fromString(partyId));
+        }
+        return partyIds;
     }
 
     private String write(Object value) {
