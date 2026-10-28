@@ -14,10 +14,16 @@
 - [ ] 2.3 Invite buttons with hover, member list with leader star, party chat format.
 - [ ] 2.4 Bundle tests: every bundle has the English key set, every template parses, help lines carry click events.
 
-## 3. Documentation
+## 3. Duplicates
 
-- [ ] 3.1 README: how to add a language or override a message in the proxy template.
+- [ ] 3.1 The actor of `create`, `accept`, `deny`, `leave`, `kick`, `promote`, `disband` gets only the command answer;
+      event notifications skip the actor (handler tests with fakes).
+- [ ] 3.2 A repeated accept for the party the player is already in answers "already in this party".
 
-## 4. Pull request
+## 4. Documentation
 
-- [ ] 4.1 Open the code pull request `feat(velocity): give party messages colour, clickable help and open translations`.
+- [ ] 4.1 README: how to add a language or override a message in the proxy template.
+
+## 5. Pull request
+
+- [ ] 5.1 Open the code pull request `feat(velocity): give party messages colour, clickable help and open translations`.

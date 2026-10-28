@@ -20,6 +20,9 @@ release, although the texts are plain MiniMessage templates that operators could
   are shown in a second colour.
 - **Richer feedback:** invites with hover texts on [Accept] and [Deny], the member list with leader marker and
   online hint, the party chat with its own prefix and a coloured sender name.
+- **One message per outcome:** today the actor reads both the command answer and the event ("Party created" plus
+  "X created the party", "You joined the party" twice). The actor gets the command answer only; a second click on an
+  old [Accept] says "already in this party".
 - **Open translations:** the plugin picks the bundle for the client locale (`de_DE` → `de` → `en`) from any
   `messages_<language>.properties` it ships or finds in `plugins/quelea/lang/`; a file there overrides single keys of
   the built-in bundle, missing keys fall back to English. Operators can add a language or recolour a message

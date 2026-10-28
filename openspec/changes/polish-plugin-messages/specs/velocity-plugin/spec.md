@@ -31,3 +31,19 @@ The plugin SHALL choose the message bundle for the client locale by language and
 - **GIVEN** `plugins/quelea/lang/messages_de.properties` overrides `prefix`
 - **WHEN** a German player receives any message
 - **THEN** it starts with the overridden prefix and the other texts are the built-in German ones
+
+### Requirement: One message per outcome
+The plugin SHALL tell the player who ran a command about its outcome exactly once: the command's own answer goes to the actor, and the matching party event SHALL NOT notify the actor again; other members are notified by the event only.
+
+#### Scenario: Create
+- **WHEN** a player creates a party
+- **THEN** they read one confirmation with the invite hint and no second "created the party" line
+
+#### Scenario: Accept
+- **WHEN** a player accepts an invite
+- **THEN** they read "You joined the party." once, and the other members read that the player joined
+
+#### Scenario: Accept again
+- **GIVEN** a player already joined the party that invited them
+- **WHEN** they click the old [Accept] button again
+- **THEN** they read that they are already in that party instead of "no pending invites"
