@@ -1,0 +1,11 @@
+{
+  "id": "quelea",
+  "name": "Quelea",
+  "version": "${version}",
+  "description": "Party system for the OneLiteFeather network: commands, party follow and presence reporting for the party service.",
+  "url": "https://github.com/OneLiteFeatherNET/Quelea",
+  "authors": [
+    "TheMeinerLP"
+  ],
+  "main": "net.onelitefeather.quelea.velocity.QueleaVelocity"
+}
