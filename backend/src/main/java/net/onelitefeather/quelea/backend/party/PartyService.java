@@ -64,7 +64,7 @@ public class PartyService {
             throw new PartyException(PartyProblem.ALREADY_IN_PARTY, "The player is already in a party.");
         }
         Instant now = clock.instant();
-        Party party = new Party(partyId, leaderId, List.of(new Member(leaderId, leader.name(), now)), now);
+        Party party = new Party(partyId, leaderId, List.of(new Member(leaderId, leader.name(), now)), now, 1);
         parties.save(party);
         markAlone(party);
         publish(PartyEventType.CREATED, party, Map.of());
@@ -150,7 +150,7 @@ public class PartyService {
         parties.deleteInvite(partyId, playerId);
         Party party = parties.find(partyId).orElse(null);
         publish(PartyEventType.DENIED, partyId, party == null ? null : party.leaderId(),
-                party == null ? List.of() : party.members(),
+                party == null ? List.of() : party.members(), party == null ? 0 : party.version(),
                 Map.of("playerId", playerId, "playerName", invite.targetName()));
     }
 
@@ -172,8 +172,13 @@ public class PartyService {
     }
 
     public Party kick(UUID partyId, UUID actorId, UUID targetId) {
+        return kick(partyId, actorId, targetId, Precondition.NONE);
+    }
+
+    public Party kick(UUID partyId, UUID actorId, UUID targetId, Precondition precondition) {
         return locked(partyId, () -> {
             Party party = require(partyId);
+            precondition.check(party);
             requireLeader(party, actorId);
             if (actorId.equals(targetId)) {
                 throw new PartyException(PartyProblem.CANNOT_TARGET_SELF, "The leader cannot kick themselves.");
@@ -186,8 +191,13 @@ public class PartyService {
     }
 
     public Party promote(UUID partyId, UUID actorId, UUID targetId) {
+        return promote(partyId, actorId, targetId, Precondition.NONE);
+    }
+
+    public Party promote(UUID partyId, UUID actorId, UUID targetId, Precondition precondition) {
         return locked(partyId, () -> {
             Party party = require(partyId);
+            precondition.check(party);
             requireLeader(party, actorId);
             if (actorId.equals(targetId)) {
                 throw new PartyException(PartyProblem.CANNOT_TARGET_SELF, "The leader is already the leader.");
@@ -203,8 +213,13 @@ public class PartyService {
     }
 
     public void disband(UUID partyId, UUID actorId) {
+        disband(partyId, actorId, Precondition.NONE);
+    }
+
+    public void disband(UUID partyId, UUID actorId, Precondition precondition) {
         locked(partyId, () -> {
             Party party = require(partyId);
+            precondition.check(party);
             requireLeader(party, actorId);
             disbandParty(party, REASON_LEADER);
             return null;
@@ -242,9 +257,18 @@ public class PartyService {
 
     /** Leader only. The event carries the server name; followers are moved by the proxies. */
     public void warp(UUID partyId, UUID actorId, String server) {
-        Party party = require(partyId);
-        requireLeader(party, actorId);
-        publish(PartyEventType.WARP, party, Map.of("server", server));
+        warp(partyId, actorId, server, Precondition.NONE);
+    }
+
+    /** Runs under the party lock like the other leader commands, so an {@code If-Match} is compared with the current version. */
+    public void warp(UUID partyId, UUID actorId, String server, Precondition precondition) {
+        locked(partyId, () -> {
+            Party party = require(partyId);
+            precondition.check(party);
+            requireLeader(party, actorId);
+            publish(PartyEventType.WARP, party, Map.of("server", server));
+            return null;
+        });
     }
 
     /** Member only. */
@@ -271,10 +295,11 @@ public class PartyService {
                     .map(Member::id)
                     .orElseThrow();
         }
-        Party after = new Party(party.id(), leaderId, remaining, party.createdAt());
+        Party after = new Party(party.id(), leaderId, remaining, party.createdAt(), party.version() + 1);
         if (remaining.size() <= 1) {
-            publish(type, party.id(), leaderId, remaining, payload);
-            disbandParty(party, REASON_LAST_MEMBER_LEFT, remaining);
+            // Two changes in a row: the departure, then the disband. Each event carries its own version.
+            publish(type, party.id(), leaderId, remaining, party.version() + 1, payload);
+            disbandParty(party, REASON_LAST_MEMBER_LEFT, remaining, party.version() + 2);
             return after;
         }
         parties.save(after);
@@ -287,11 +312,14 @@ public class PartyService {
     }
 
     private void disbandParty(Party party, String reason) {
-        disbandParty(party, reason, party.members());
+        disbandParty(party, reason, party.members(), party.version() + 1);
     }
 
-    /** Releases every bound member, deletes the party and publishes DISBANDED with the former members. */
-    private void disbandParty(Party party, String reason, List<Member> stillBound) {
+    /**
+     * Releases every bound member, deletes the party and publishes DISBANDED with the former members. The party is gone
+     * afterwards, so the event carries the version the disband would have had.
+     */
+    private void disbandParty(Party party, String reason, List<Member> stillBound, long version) {
         for (Member member : stillBound) {
             parties.releasePlayer(member.id(), party.id());
         }
@@ -301,7 +329,7 @@ public class PartyService {
         for (Member member : party.members()) {
             formerMembers.add(Map.of("id", member.id(), "name", member.name()));
         }
-        publish(PartyEventType.DISBANDED, party.id(), null, List.of(),
+        publish(PartyEventType.DISBANDED, party.id(), null, List.of(), version,
                 Map.of("formerMembers", formerMembers, "reason", reason));
     }
 
@@ -340,10 +368,11 @@ public class PartyService {
     }
 
     private void publish(PartyEventType type, Party party, Map<String, Object> payload) {
-        publish(type, party.id(), party.leaderId(), party.members(), payload);
+        publish(type, party.id(), party.leaderId(), party.members(), party.version(), payload);
     }
 
-    private void publish(PartyEventType type, UUID partyId, UUID leaderId, List<Member> members, Map<String, Object> payload) {
+    private void publish(PartyEventType type, UUID partyId, UUID leaderId, List<Member> members, long version,
+                         Map<String, Object> payload) {
         events.publish(new PartyEvent(
                 UUID.randomUUID(),
                 type.wireName(),
@@ -352,6 +381,7 @@ public class PartyService {
                 leaderId,
                 List.copyOf(members),
                 Collections.unmodifiableMap(new LinkedHashMap<>(payload)),
-                TraceContext.traceparent()));
+                TraceContext.traceparent(),
+                version));
     }
 }

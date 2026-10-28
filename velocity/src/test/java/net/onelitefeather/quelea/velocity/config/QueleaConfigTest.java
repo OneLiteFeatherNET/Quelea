@@ -8,10 +8,12 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -105,5 +107,52 @@ class QueleaConfigTest {
     void rejectsAnInvalidLobbyPattern() throws IOException {
         assertThrows(IllegalArgumentException.class,
                 () -> QueleaConfig.load(file(), Map.of("QUELEA_LOBBY_PATTERN", "([unclosed")::get));
+    }
+
+    @Test
+    void readsTheCredentialsFromTheFile() throws IOException {
+        writeFile("tenant-id=tenant-1\nclient-id=client-1\nclient-secret=file-secret\nauth-scope=api://api-1/.default\n");
+
+        QueleaConfig config = QueleaConfig.load(file(), name -> null);
+
+        assertTrue(config.credentials().isComplete());
+        assertEquals("tenant-1", config.credentials().tenantId());
+        assertEquals("client-1", config.credentials().clientId());
+        assertEquals("file-secret", config.credentials().clientSecret());
+        assertEquals("api://api-1/.default", config.credentials().scope());
+    }
+
+    @Test
+    void credentialEnvironmentVariablesOverrideTheFile() throws IOException {
+        writeFile("tenant-id=from-file\nclient-secret=from-file\n");
+
+        QueleaConfig config = QueleaConfig.load(file(), Map.of(
+                "QUELEA_TENANT_ID", "from-env",
+                "QUELEA_CLIENT_ID", "client-env",
+                "QUELEA_CLIENT_SECRET", "secret-env",
+                "QUELEA_AUTH_SCOPE", "api://env/.default")::get);
+
+        assertEquals("from-env", config.credentials().tenantId());
+        assertEquals("client-env", config.credentials().clientId());
+        assertEquals("secret-env", config.credentials().clientSecret());
+        assertEquals("api://env/.default", config.credentials().scope());
+    }
+
+    @Test
+    void missingCredentialsAreReportedByTheirConfigKeys() throws IOException {
+        QueleaConfig config = QueleaConfig.load(file(), name -> null);
+
+        assertFalse(config.credentials().isComplete());
+        assertEquals(List.of("tenant-id", "client-id", "client-secret", "auth-scope"), config.credentials().missing());
+    }
+
+    @Test
+    void writesTheCredentialKeysAsCommentedDefaults() throws IOException {
+        QueleaConfig.load(file(), name -> null);
+
+        String written = Files.readString(file(), StandardCharsets.UTF_8);
+        assertTrue(written.contains("#client-secret=") && written.contains("QUELEA_CLIENT_SECRET"),
+                "the secret key is documented with its environment variable");
+        assertTrue(written.contains("#auth-scope="), "the scope key is documented");
     }
 }

@@ -1,5 +1,6 @@
 package net.onelitefeather.quelea.velocity.stream;
 
+import net.onelitefeather.quelea.velocity.auth.ClientCredentialsTokenProvider;
 import net.onelitefeather.quelea.velocity.http.QueleaUnavailableException;
 import org.slf4j.Logger;
 
@@ -11,18 +12,21 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Iterator;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 /**
  * Keeps one {@code GET /v1/events} stream open on a virtual thread. After every successful connect it runs
  * {@code onConnect} (the presence snapshot) before reading events; on failure it waits with {@link Backoff} and
- * reconnects until {@link #stop()} is called.
+ * reconnects until {@link #stop()} is called. Each connect carries the bearer token; a 401 discards that token, so
+ * the reconnect after the backoff fetches a new one.
  */
 public final class EventStream {
 
     private final HttpClient client;
     private final URI uri;
+    private final Optional<ClientCredentialsTokenProvider> tokens;
     private final Runnable onConnect;
     private final Consumer<SseMessage> onMessage;
     private final Backoff backoff;
@@ -33,10 +37,12 @@ public final class EventStream {
     private volatile Thread thread;
     private volatile Stream<String> body;
 
-    public EventStream(HttpClient client, URI uri, Runnable onConnect, Consumer<SseMessage> onMessage,
+    public EventStream(HttpClient client, URI uri, Optional<ClientCredentialsTokenProvider> tokens,
+                       Runnable onConnect, Consumer<SseMessage> onMessage,
                        Backoff backoff, Sleeper sleeper, Logger logger) {
         this.client = client;
         this.uri = uri;
+        this.tokens = tokens;
         this.onConnect = onConnect;
         this.onMessage = onMessage;
         this.backoff = backoff;
@@ -95,14 +101,18 @@ public final class EventStream {
     }
 
     private void connectAndRead() throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(uri)
+        Optional<String> token = tokens.isPresent() ? Optional.of(tokens.get().token()) : Optional.empty();
+        HttpRequest.Builder request = HttpRequest.newBuilder(uri)
                 .header("Accept", "text/event-stream")
-                .GET()
-                .build();
-        HttpResponse<Stream<String>> response = client.send(request, HttpResponse.BodyHandlers.ofLines());
+                .GET();
+        token.ifPresent(value -> request.header("Authorization", "Bearer " + value));
+        HttpResponse<Stream<String>> response = client.send(request.build(), HttpResponse.BodyHandlers.ofLines());
         try (Stream<String> lines = response.body()) {
             body = lines;
             if (response.statusCode() != 200) {
+                if (response.statusCode() == 401 && token.isPresent()) {
+                    tokens.get().rejected(token.get());
+                }
                 throw new QueleaUnavailableException("event stream answered HTTP " + response.statusCode());
             }
             onConnect.run();

@@ -8,8 +8,13 @@ dependencies {
     annotationProcessor(mn.micronaut.serde.processor)
     annotationProcessor(mn.micronaut.http.validation)
     annotationProcessor(mn.micronaut.openapi)
+    annotationProcessor(mn.micronaut.security.annotations)
     compileOnly(mn.micronaut.openapi.annotations)
     implementation(mn.micronaut.http.validation)
+
+    // Entra ID access tokens: resource server only, validated against a JWKS (no login flow, no session).
+    implementation(mn.micronaut.security)
+    implementation(mn.micronaut.security.jwt)
 
     implementation(mn.micronaut.runtime)
     implementation("io.micronaut.validation:micronaut-validation")
@@ -100,6 +105,12 @@ tasks.named("optimizedBuildLayers") {
     doLast {
         outputs.files.asFileTree.forEach { it.setReadable(true, false) }
     }
+}
+
+// ./gradlew :backend:run is local development against docker/docker-compose.yml: the dev environment turns
+// authentication off (application-dev.yml), which the start-up guard allows only there.
+tasks.named<JavaExec>("run") {
+    environment("MICRONAUT_ENVIRONMENTS", "dev")
 }
 
 // Integration tests (@Tag("integration")) need Docker for Testcontainers. Run the rest without it

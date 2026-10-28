@@ -39,7 +39,7 @@ class EventBroadcasterTest {
         Disposable a = broadcaster.stream().subscribe(first::add);
         Disposable b = broadcaster.stream().subscribe(second::add);
         PartyEvent event = new PartyEvent(UUID.randomUUID(), "party.chat", UUID.randomUUID(),
-                Instant.parse("2026-01-01T12:00:00Z"), null, List.of(), Map.of(), null);
+                Instant.parse("2026-01-01T12:00:00Z"), null, List.of(), Map.of(), null, 1);
 
         broadcaster.deliver(event);
 
@@ -53,7 +53,7 @@ class EventBroadcasterTest {
     void eventWithoutOpenStreamIsDropped() {
         EventBroadcaster broadcaster = new EventBroadcaster(new SimpleMeterRegistry(), 256);
         PartyEvent event = new PartyEvent(UUID.randomUUID(), "party.chat", UUID.randomUUID(),
-                Instant.parse("2026-01-01T12:00:00Z"), null, List.of(), Map.of(), null);
+                Instant.parse("2026-01-01T12:00:00Z"), null, List.of(), Map.of(), null, 1);
 
         broadcaster.deliver(event);
 
@@ -82,7 +82,7 @@ class EventBroadcasterTest {
         // One more than the stalled stream's buffer of 4.
         for (int i = 0; i < 5; i++) {
             events.add(new PartyEvent(UUID.randomUUID(), "party.chat", UUID.randomUUID(),
-                    Instant.parse("2026-01-01T12:00:00Z"), null, List.of(), Map.of(), null));
+                    Instant.parse("2026-01-01T12:00:00Z"), null, List.of(), Map.of(), null, 1));
         }
 
         events.forEach(broadcaster::deliver);

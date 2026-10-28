@@ -1,0 +1,5 @@
+# Local development (docker compose + ./gradlew :backend:run). Authentication is off so requests need no token.
+# The start-up guard refuses this setting in any other environment.
+micronaut:
+  security:
+    enabled: false

@@ -13,6 +13,51 @@ micronaut:
         url: ${QUELEA_METRICS_OTLP_URL:`http://localhost:4318/v1/metrics`}
         step: ${QUELEA_METRICS_OTLP_STEP:60s}
 
+  # Resource server only: Entra ID app-only bearer tokens, no login flow, no session. A route without an @Secured
+  # rule is rejected. The token must be signed by the issuer's JWKS (quelea.auth.jwks-url), come from the issuer
+  # and be meant for this API (audience); tenant, expiry and not-before are checked by this application (see the
+  # quelea.auth block below and the security package).
+  security:
+    authentication: bearer
+    # A path that matches no route answers 404 (not-found) as before, whether or not the caller sent a token.
+    # Every route that exists still needs a token: this only concerns paths that are not routes at all.
+    reject-not-found: false
+    endpoints:
+      introspection:
+        enabled: false
+    token:
+      jwt:
+        claims-validators:
+          # Entra v2 tokens: https://login.microsoftonline.com/<tenant>/v2.0
+          issuer: ${QUELEA_AUTH_ISSUER:`http://localhost:18090/quelea`}
+          # The API app registration's client id GUID as it appears in "aud". The default is a local placeholder,
+          # refused outside the dev and test environments (StartupRequirementsGuard).
+          audience: ${QUELEA_AUTH_AUDIENCE:quelea-api}
+          # exp and nbf are checked by TimeClaimsValidator with the bounded clock skew; the library validators
+          # have no leeway, so they are switched off here.
+          expiration: false
+          not-before: false
+    intercept-url-map:
+      - pattern: /health/**
+        access:
+          - isAnonymous()
+      - pattern: /swagger/**
+        access:
+          - isAnonymous()
+      - pattern: /swagger-ui/**
+        access:
+          - isAnonymous()
+  router:
+    static-resources:
+      swagger:
+        enabled: true
+        paths: classpath:META-INF/swagger
+        mapping: /swagger/**
+      swagger-ui:
+        enabled: true
+        paths: classpath:META-INF/swagger/views/swagger-ui
+        mapping: /swagger-ui/**
+
 # Dragonfly (Redis protocol) holds all party state. Defaults match docker/docker-compose.yml.
 redis:
   uri: ${REDIS_URI:`redis://localhost:6379`}
@@ -25,6 +70,15 @@ quelea:
     lock-ttl: ${QUELEA_REDIS_LOCK_TTL:3s}
     # How long a request waits for a busy party lock before it fails with lock-timeout (503).
     lock-wait: ${QUELEA_REDIS_LOCK_WAIT:1s}
+  auth:
+    # The Entra tenant (directory) id; a token whose "tid" claim differs is refused. Required outside the dev and
+    # test environments (StartupRequirementsGuard).
+    tenant-id: ${QUELEA_AUTH_TENANT_ID:}
+    # Where the issuer publishes its signing keys. Entra: https://login.microsoftonline.com/<tenant>/discovery/v2.0/keys
+    jwks-url: ${QUELEA_AUTH_JWKS_URL:`http://localhost:18090/quelea/jwks`}
+    # Tolerated difference between the issuer's clock and this one for exp and nbf. Bounded to 0s..60s: a larger
+    # value stops the service from starting, so expiry cannot be silently widened (RFC 8725).
+    clock-skew: ${QUELEA_AUTH_CLOCK_SKEW:60s}
   party:
     # Maximum number of members per party, counting the leader.
     max-size: ${QUELEA_PARTY_MAX_SIZE:8}
@@ -41,6 +95,11 @@ quelea:
     proxy-timeout: ${QUELEA_PROXY_TIMEOUT:45s}
     # How often the dead-proxy reaper runs (one replica per sweep, under a lock).
     reaper-interval: 30s
+  idempotency:
+    # How long the response of a completed request is replayed for its Idempotency-Key.
+    ttl: ${QUELEA_IDEMPOTENCY_TTL:24h}
+    # Marker of a request in progress: a duplicate within this time answers 409 request-in-progress.
+    lock: ${QUELEA_IDEMPOTENCY_LOCK:10s}
   events:
     # Interval of the keep-alive comment sent on idle event streams.
     keepalive: ${QUELEA_SSE_KEEPALIVE:15s}

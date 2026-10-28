@@ -4,6 +4,7 @@ import io.micronaut.http.HttpRequest;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.MediaType;
+import io.micronaut.http.MutableHttpResponse;
 import jakarta.inject.Singleton;
 import net.onelitefeather.quelea.backend.event.TraceContext;
 
@@ -30,7 +31,7 @@ public class ProblemFactory {
         );
     }
 
-    public HttpResponse<Problem> response(Problem problem) {
+    public MutableHttpResponse<Problem> response(Problem problem) {
         return HttpResponse.status(HttpStatus.valueOf(problem.status()))
                 .body(problem)
                 .contentType(MediaType.of(Problem.MEDIA_TYPE));

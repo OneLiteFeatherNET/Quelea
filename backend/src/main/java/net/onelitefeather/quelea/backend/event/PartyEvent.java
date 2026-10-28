@@ -10,7 +10,8 @@ import java.util.UUID;
 
 /**
  * One change of a party. {@code members} and {@code leaderId} describe the party after the change;
- * {@code traceparent} is the W3C trace context of the request that caused it, or {@code null}.
+ * {@code version} is the party version after the change (0 when the party no longer exists and never had a change to
+ * report); {@code traceparent} is the W3C trace context of the request that caused it, or {@code null}.
  */
 @Serdeable
 public record PartyEvent(
@@ -21,6 +22,7 @@ public record PartyEvent(
         UUID leaderId,
         List<Member> members,
         Map<String, Object> payload,
-        String traceparent
+        String traceparent,
+        long version
 ) {
 }

@@ -2,12 +2,15 @@ package net.onelitefeather.quelea.backend.api;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import net.onelitefeather.quelea.backend.event.EventBroadcaster;
+import io.micronaut.security.authentication.Authentication;
 import net.onelitefeather.quelea.backend.event.PartyEvent;
+import net.onelitefeather.quelea.backend.support.MutableClock;
 import org.junit.jupiter.api.Test;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -16,14 +19,63 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class EventControllerTest {
 
+    private static final Instant NOW = Instant.parse("2026-01-01T12:00:00Z");
+
+    @Test
+    void streamCompletesWhenTheTokenExpires() {
+        EventController controller = controllerWithKeepAliveAt(Duration.ofHours(1));
+        Authentication token = tokenExpiringIn(Duration.ofMinutes(10));
+
+        StepVerifier.withVirtualTime(() -> controller.stream(null, "proxy-1", token), 0)
+                .expectSubscription()
+                .expectNoEvent(Duration.ofMinutes(9))
+                .thenAwait(Duration.ofMinutes(1))
+                .expectComplete()
+                .verify();
+    }
+
+    @Test
+    void streamStaysOpenUntilTheTokenExpires() {
+        EventController controller = controllerWithKeepAliveAt(Duration.ofHours(1));
+        Authentication token = tokenExpiringIn(Duration.ofMinutes(10));
+
+        StepVerifier.withVirtualTime(() -> controller.stream(null, "proxy-1", token), 0)
+                .expectSubscription()
+                .expectNoEvent(Duration.ofMinutes(9).plusSeconds(59))
+                .thenCancel()
+                .verify();
+    }
+
+    @Test
+    void streamWithoutTokenHasNoExpiry() {
+        EventController controller = controllerWithKeepAliveAt(Duration.ofHours(1));
+
+        StepVerifier.withVirtualTime(() -> controller.stream(null, "proxy-1", null), 0)
+                .expectSubscription()
+                .expectNoEvent(Duration.ofHours(12))
+                .thenCancel()
+                .verify();
+    }
+
+    private static EventController controllerWithKeepAliveAt(Duration keepAlive) {
+        return new EventController(new EventBroadcaster(new SimpleMeterRegistry(), 256), keepAlive,
+                new SimpleMeterRegistry(), new MutableClock(NOW));
+    }
+
+    private static Authentication tokenExpiringIn(Duration lifetime) {
+        return Authentication.build("quelea-client", Map.of(
+                "exp", Date.from(NOW.plus(lifetime)),
+                "azp", "00000000-0000-4000-8000-0000000000c1"));
+    }
+
     @Test
     void missedKeepAliveDoesNotEndTheStream() {
         EventController controller = new EventController(new EventBroadcaster(new SimpleMeterRegistry(), 256),
-                Duration.ofSeconds(15), new SimpleMeterRegistry());
+                Duration.ofSeconds(15), new SimpleMeterRegistry(), new MutableClock(NOW));
 
         // Requests nothing, so every keep-alive tick arrives while the client is not reading. Ten minutes are 40 ticks,
         // more than the 32 the merge buffers before a missed tick used to end the stream.
-        StepVerifier.withVirtualTime(() -> controller.stream(null, "proxy-1"), 0)
+        StepVerifier.withVirtualTime(() -> controller.stream(null, "proxy-1", null), 0)
                 .expectSubscription()
                 .thenAwait(Duration.ofMinutes(10))
                 .expectNoEvent(Duration.ofSeconds(1))
@@ -35,10 +87,10 @@ class EventControllerTest {
     void stalledStreamEndsAndOverflowIsCounted() {
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
         EventBroadcaster broadcaster = new EventBroadcaster(registry, 4);
-        EventController controller = new EventController(broadcaster, Duration.ofMinutes(10), registry);
+        EventController controller = new EventController(broadcaster, Duration.ofMinutes(10), registry, new MutableClock(NOW));
 
         // Well past the merge buffer (32) plus the stream buffer (4), so the stalled stream overflows.
-        StepVerifier.create(controller.stream("lobby-1", null), 0)
+        StepVerifier.create(controller.stream("lobby-1", null, null), 0)
                 .expectSubscription()
                 .then(() -> {
                     for (int i = 0; i < 100; i++) {
@@ -69,6 +121,6 @@ class EventControllerTest {
 
     private static PartyEvent chat() {
         return new PartyEvent(UUID.randomUUID(), "party.chat", UUID.randomUUID(),
-                Instant.parse("2026-01-01T12:00:00Z"), null, List.of(), Map.of(), null);
+                Instant.parse("2026-01-01T12:00:00Z"), null, List.of(), Map.of(), null, 1);
     }
 }

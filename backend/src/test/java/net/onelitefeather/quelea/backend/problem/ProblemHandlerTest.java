@@ -8,6 +8,7 @@ import io.micronaut.http.client.annotation.Client;
 import io.micronaut.http.client.exceptions.HttpClientResponseException;
 import io.micronaut.serde.ObjectMapper;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
+import net.onelitefeather.quelea.backend.security.TestJwtIssuer;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
@@ -25,6 +26,9 @@ class ProblemHandlerTest {
 
     @Inject
     ObjectMapper objectMapper;
+
+    @Inject
+    TestJwtIssuer jwt;
 
     @Test
     void domainErrorAnswersWithTheStatusOfItsProblem() {
@@ -145,7 +149,7 @@ class ProblemHandlerTest {
 
     private Result send(io.micronaut.http.MutableHttpRequest<?> request) {
         try {
-            HttpResponse<String> response = client.toBlocking().exchange(request, String.class);
+            HttpResponse<String> response = client.toBlocking().exchange(request.bearerAuth(jwt.clientToken()), String.class);
             return Result.of(response);
         } catch (HttpClientResponseException e) {
             return Result.of(e.getResponse());

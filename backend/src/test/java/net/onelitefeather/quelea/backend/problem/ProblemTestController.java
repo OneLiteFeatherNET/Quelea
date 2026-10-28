@@ -6,15 +6,18 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Post;
 import io.micronaut.http.annotation.QueryValue;
+import io.micronaut.security.annotation.Secured;
 import io.micronaut.serde.annotation.Serdeable;
 import io.micronaut.validation.Validated;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import net.onelitefeather.quelea.backend.security.Roles;
 
 /** Throws each kind of error the global handlers must map. Exists only in the test environment. */
 @Requires(env = "test")
 @Validated
 @Controller("/test")
+@Secured(Roles.CLIENT)
 public class ProblemTestController {
 
     @Get("/party")

@@ -79,6 +79,11 @@ public class RedisKeys {
         return prefix + "parties:alone:expire";
     }
 
+    /** Idempotency record of one client's key; {@code keyHash} is the SHA-256 of the key, never the key itself. */
+    public String idempotency(String client, String keyHash) {
+        return prefix + "idem:" + client + ":" + keyHash;
+    }
+
     /** A distributed lock; {@code name} is the lock name as passed to {@code LockService}. */
     public String lock(String name) {
         return prefix + "lock:" + name;

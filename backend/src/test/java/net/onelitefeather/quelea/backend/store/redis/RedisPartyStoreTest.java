@@ -198,7 +198,7 @@ class RedisPartyStoreTest {
 
     private static Party party(UUID leader) {
         Member member = new Member(leader, "Leader", NOW);
-        return new Party(UUID.randomUUID(), leader, List.of(member), NOW);
+        return new Party(UUID.randomUUID(), leader, List.of(member), NOW, 1);
     }
 
     private static Invite invite(UUID partyId, UUID targetId) {
