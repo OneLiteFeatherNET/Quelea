@@ -86,3 +86,4 @@ dependencyResolutionManagement {
 }
 
 include("backend")
+include("client")
