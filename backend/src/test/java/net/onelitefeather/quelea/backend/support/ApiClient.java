@@ -66,15 +66,19 @@ public final class ApiClient {
         return id;
     }
 
-    /** The status, content type, body and {@code WWW-Authenticate} challenge (empty when absent) of a reply. */
-    public record Response(int status, String contentType, String body, String challenge) {
+    /**
+     * The status, content type, body, {@code WWW-Authenticate} challenge and {@code ETag} (each empty when absent) of a
+     * reply.
+     */
+    public record Response(int status, String contentType, String body, String challenge, String etag) {
 
         static Response of(HttpResponse<?> response) {
             return new Response(
                     response.getStatus().getCode(),
                     response.getContentType().map(MediaType::toString).orElse(""),
                     response.getBody(String.class).orElse(""),
-                    java.util.Optional.ofNullable(response.getHeaders().get(HttpHeaders.WWW_AUTHENTICATE)).orElse(""));
+                    java.util.Optional.ofNullable(response.getHeaders().get(HttpHeaders.WWW_AUTHENTICATE)).orElse(""),
+                    java.util.Optional.ofNullable(response.getHeaders().get(HttpHeaders.ETAG)).orElse(""));
         }
 
         public JsonNode json() {

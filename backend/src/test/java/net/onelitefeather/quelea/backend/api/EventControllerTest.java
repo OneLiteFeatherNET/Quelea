@@ -69,6 +69,6 @@ class EventControllerTest {
 
     private static PartyEvent chat() {
         return new PartyEvent(UUID.randomUUID(), "party.chat", UUID.randomUUID(),
-                Instant.parse("2026-01-01T12:00:00Z"), null, List.of(), Map.of(), null);
+                Instant.parse("2026-01-01T12:00:00Z"), null, List.of(), Map.of(), null, 1);
     }
 }

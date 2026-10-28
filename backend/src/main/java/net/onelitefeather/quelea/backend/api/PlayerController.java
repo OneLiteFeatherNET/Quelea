@@ -2,15 +2,21 @@ package net.onelitefeather.quelea.backend.api;
 
 import io.micronaut.scheduling.TaskExecutors;
 import io.micronaut.scheduling.annotation.ExecuteOn;
+import io.micronaut.core.annotation.Nullable;
+import io.micronaut.http.HttpHeaders;
+import io.micronaut.http.HttpResponse;
 import io.micronaut.http.HttpStatus;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
+import io.micronaut.http.annotation.Header;
 import io.micronaut.http.annotation.PathVariable;
 import io.micronaut.http.annotation.Post;
 import io.micronaut.http.annotation.Status;
 import io.micronaut.security.annotation.Secured;
 import io.micronaut.validation.Validated;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -48,12 +54,19 @@ public class PlayerController {
     @Operation(operationId = "getPartyOfPlayer", summary = "Get the party a player is in")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "The player's party",
+                    headers = @io.swagger.v3.oas.annotations.headers.Header(name = HttpHeaders.ETAG,
+                            description = "Strong entity tag of the party: its version, for example \"4\"",
+                            schema = @Schema(type = "string")),
                     content = @Content(schema = @Schema(implementation = Party.class))),
+            @ApiResponse(responseCode = "304", description = "If-None-Match named the current entity tag; no body"),
             @ApiResponse(responseCode = "404", description = "The player is not in a party",
                     content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class)))
     })
-    public Party partyOf(@PathVariable UUID playerId) {
-        return metrics.record("party-of", () -> parties.partyOf(playerId));
+    public HttpResponse<Party> partyOf(@PathVariable UUID playerId,
+                                       @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.IF_NONE_MATCH,
+                                               description = "Optional. Entity tag(s) the client holds; a current one answers 304.")
+                                       @Nullable @Header(HttpHeaders.IF_NONE_MATCH) String ifNoneMatch) {
+        return metrics.record("party-of", () -> PartyResponses.read(parties.partyOf(playerId), ifNoneMatch));
     }
 
     @Get("/{playerId}/invites")
@@ -70,14 +83,17 @@ public class PlayerController {
     @Operation(operationId = "acceptInvite", summary = "Accept an invite and join the party")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "The party after the join",
+                    headers = @io.swagger.v3.oas.annotations.headers.Header(name = HttpHeaders.ETAG,
+                            description = "Strong entity tag of the party: its version, for example \"4\"",
+                            schema = @Schema(type = "string")),
                     content = @Content(schema = @Schema(implementation = Party.class))),
             @ApiResponse(responseCode = "404", description = "There is no live invite to that party",
                     content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class))),
             @ApiResponse(responseCode = "409", description = "The player is in a party or the party is full",
                     content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class)))
     })
-    public Party accept(@PathVariable UUID playerId, @PathVariable UUID partyId) {
-        return metrics.record("accept", () -> parties.accept(playerId, partyId));
+    public HttpResponse<Party> accept(@PathVariable UUID playerId, @PathVariable UUID partyId) {
+        return metrics.record("accept", () -> PartyResponses.ok(parties.accept(playerId, partyId)));
     }
 
     @Post("/{playerId}/invites/{partyId}/deny")

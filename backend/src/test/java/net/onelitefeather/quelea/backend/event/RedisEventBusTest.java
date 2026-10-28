@@ -25,7 +25,7 @@ class RedisEventBusTest {
         RedisEventBus bus = new RedisEventBus(connectionWhosePublishFails(), null,
                 ObjectMapper.create(Map.of()), registry, null);
         PartyEvent event = new PartyEvent(UUID.randomUUID(), "party.chat", UUID.randomUUID(), Instant.EPOCH,
-                UUID.randomUUID(), List.of(), Map.of("message", "hi"), null);
+                UUID.randomUUID(), List.of(), Map.of("message", "hi"), null, 1);
 
         assertDoesNotThrow(() -> bus.publish(event), "publishing must swallow a Dragonfly failure");
         assertEquals(1.0, registry.get("quelea.events.failed").tag("type", "party.chat").counter().count(),

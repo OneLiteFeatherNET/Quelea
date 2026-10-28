@@ -24,6 +24,8 @@ Events are delivered at most once. A proxy that reconnects does not receive even
 
 **Lonely parties.** A party that still has only its creator after `QUELEA_PARTY_ALONE_TIMEOUT` is disbanded. `QUELEA_PARTY_ALONE_WARNING` before that, the service publishes `party.expiring` with the expiry time, and the proxy tells the leader how many minutes are left. Expired parties are disbanded with the reason `expired-alone`. Every `party.disbanded` event carries a `reason`: `leader` (the leader disbanded), `last-member-left` (only one member remained) or `expired-alone`. Clients must treat an unknown reason like `leader`.
 
+**Party versions and conditional requests.** Every party has a `version`: 1 when it is created, +1 with every change. It is in the party JSON and in every event. `GET /v1/parties/{id}` and `GET /v1/players/{id}/party` send it as a strong `ETag` (for example `"4"`) and answer `304 Not Modified` without a body when `If-None-Match` names the current tag. `kick`, `promote`, `disband` and `warp` accept `If-Match` with one or more strong tags or `*`. If none matches the current version, the command changes nothing and answers `412 precondition-failed`. A weak tag (`W/`) never matches. Without the header the command runs unconditionally.
+
 **Event streams.** Each stream of `GET /v1/events` identifies its client with `clientId` (`proxyId` is accepted as an alias). A client that falls more than `QUELEA_SSE_BUFFER` events behind has its stream closed and counted in `quelea.sse.disconnects{reason="overflow"}`; it must reconnect and take a fresh snapshot.
 
 ## Modules

@@ -576,6 +576,119 @@ class PartyServiceTest {
     // --- helpers --------------------------------------------------------------------------------
 
     /** Invites {@code name} from the leader's party (creating it if needed) and accepts; returns the party. */
+    // --- Party version and preconditions --------------------------------------------------------
+
+    @Test
+    void newPartyIsAtVersionOne() {
+        PartyFixture f = new PartyFixture();
+        UUID alpha = f.online("Alpha");
+
+        assertEquals(1, f.partyService.create(alpha).version(), "a new party starts at version 1");
+    }
+
+    @Test
+    void joinIncrementsVersionAndTheEventCarriesIt() {
+        PartyFixture f = new PartyFixture();
+        UUID alpha = f.online("Alpha");
+        f.online("Bravo");
+        f.partyService.create(alpha);
+        Invite invite = f.partyService.invite(alpha, "Bravo");
+
+        Party joined = f.partyService.accept(invite.targetId(), invite.partyId());
+
+        assertEquals(2, joined.version(), "a join is one change: version 1 becomes 2");
+        assertEquals(2, lastEvent(f, "party.joined").version(), "the join event must carry the new version");
+    }
+
+    @Test
+    void kickWithStalePreconditionChangesNothing() {
+        PartyFixture f = new PartyFixture();
+        UUID alpha = f.online("Alpha");
+        UUID bravo = f.online("Bravo");
+        Party party = join(f, alpha, "Bravo");
+        int eventsBefore = f.events.events().size();
+
+        assertProblem(PartyProblem.PRECONDITION_FAILED,
+                () -> f.partyService.kick(party.id(), alpha, bravo, new Precondition(EntityTags.of(1))));
+
+        assertTrue(f.partyService.get(party.id()).isMember(bravo), "a stale kick must not remove the member");
+        assertEquals(eventsBefore, f.events.events().size(), "a rejected kick must publish nothing");
+    }
+
+    @Test
+    void kickWithCurrentPreconditionRunsAndIncrementsVersion() {
+        PartyFixture f = new PartyFixture();
+        UUID alpha = f.online("Alpha");
+        UUID bravo = f.online("Bravo");
+        Party party = join(f, alpha, "Bravo");
+
+        Party after = f.partyService.kick(party.id(), alpha, bravo, new Precondition(EntityTags.of(party.version())));
+
+        assertFalse(after.isMember(bravo), "a kick whose precondition holds must remove the member");
+        assertEquals(party.version() + 1, after.version(), "the kick is one change");
+    }
+
+    @Test
+    void weakPreconditionNeverMatchesTheParty() {
+        PartyFixture f = new PartyFixture();
+        UUID alpha = f.online("Alpha");
+        UUID bravo = f.online("Bravo");
+        Party party = join(f, alpha, "Bravo");
+
+        assertProblem(PartyProblem.PRECONDITION_FAILED,
+                () -> f.partyService.kick(party.id(), alpha, bravo, new Precondition("W/" + EntityTags.of(party.version()))));
+    }
+
+    @Test
+    void wildcardPreconditionMatchesAnExistingParty() {
+        PartyFixture f = new PartyFixture();
+        UUID alpha = f.online("Alpha");
+        UUID bravo = f.online("Bravo");
+        Party party = join(f, alpha, "Bravo");
+
+        Party after = f.partyService.kick(party.id(), alpha, bravo, new Precondition("*"));
+
+        assertFalse(after.isMember(bravo), "If-Match: * must match any existing party");
+    }
+
+    @Test
+    void promoteWithStalePreconditionKeepsTheLeader() {
+        PartyFixture f = new PartyFixture();
+        UUID alpha = f.online("Alpha");
+        UUID bravo = f.online("Bravo");
+        Party party = join(f, alpha, "Bravo");
+
+        assertProblem(PartyProblem.PRECONDITION_FAILED,
+                () -> f.partyService.promote(party.id(), alpha, bravo, new Precondition(EntityTags.of(99))));
+
+        assertTrue(f.partyService.get(party.id()).isLeader(alpha), "a stale promote must keep the leader");
+    }
+
+    @Test
+    void warpWithStalePreconditionPublishesNothing() {
+        PartyFixture f = new PartyFixture();
+        UUID alpha = f.online("Alpha");
+        Party party = f.partyService.create(alpha);
+        int eventsBefore = f.events.events().size();
+
+        assertProblem(PartyProblem.PRECONDITION_FAILED,
+                () -> f.partyService.warp(party.id(), alpha, "Lobby-1", new Precondition(EntityTags.of(7))));
+
+        assertEquals(eventsBefore, f.events.events().size(), "a rejected warp must not reach the proxies");
+    }
+
+    @Test
+    void disbandWithStalePreconditionKeepsTheParty() {
+        PartyFixture f = new PartyFixture();
+        UUID alpha = f.online("Alpha");
+        Party party = f.partyService.create(alpha);
+
+        assertProblem(PartyProblem.PRECONDITION_FAILED,
+                () -> f.partyService.disband(party.id(), alpha, new Precondition(EntityTags.of(5))));
+
+        assertEquals(party.id(), f.partyService.get(party.id()).id(), "a stale disband must keep the party");
+    }
+
     private static Party join(PartyFixture f, UUID leader, String name) {
         Invite invite = f.partyService.invite(leader, name);
         return f.partyService.accept(invite.targetId(), invite.partyId());
