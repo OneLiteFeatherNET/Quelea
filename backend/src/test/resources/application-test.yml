@@ -1,0 +1,5 @@
+# Unit and controller tests run without Dragonfly: the Redis client is switched off, and the in-memory
+# port implementations from src/test provide the party and presence stores.
+redis:
+  enabled: false
+  uri: redis://localhost:1
