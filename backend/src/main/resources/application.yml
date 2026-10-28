@@ -13,6 +13,10 @@ quelea:
   redis:
     # Prefix for every key the service writes, so several environments can share one Dragonfly.
     prefix: ${QUELEA_REDIS_PREFIX:quelea:}
+    # Lease of a party lock. Long enough for one party mutation; a holder that stalls past it loses the lock.
+    lock-ttl: ${QUELEA_REDIS_LOCK_TTL:3s}
+    # How long a request waits for a busy party lock before it fails with lock-timeout (503).
+    lock-wait: ${QUELEA_REDIS_LOCK_WAIT:1s}
   party:
     # Maximum number of members per party, counting the leader.
     max-size: ${QUELEA_PARTY_MAX_SIZE:8}
