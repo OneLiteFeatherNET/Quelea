@@ -41,6 +41,7 @@ dependencies {
     testImplementation(mn.micronaut.test.junit5)
     testImplementation(mn.micronaut.http.client)
     // Redis integration tests (tagged "integration") run against a Redis container (pulls in Testcontainers).
+    testImplementation(mn.testcontainers.core)
     testImplementation(mn.testcontainers.redis)
 }
 
