@@ -8,8 +8,13 @@ dependencies {
     annotationProcessor(mn.micronaut.serde.processor)
     annotationProcessor(mn.micronaut.http.validation)
     annotationProcessor(mn.micronaut.openapi)
+    annotationProcessor(mn.micronaut.security.annotations)
     compileOnly(mn.micronaut.openapi.annotations)
     implementation(mn.micronaut.http.validation)
+
+    // Entra ID access tokens: resource server only, validated against a JWKS (no login flow, no session).
+    implementation(mn.micronaut.security)
+    implementation(mn.micronaut.security.jwt)
 
     implementation(mn.micronaut.runtime)
     implementation("io.micronaut.validation:micronaut-validation")

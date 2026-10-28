@@ -2,12 +2,14 @@ package net.onelitefeather.quelea.backend.support;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import io.micronaut.http.HttpHeaders;
 import io.micronaut.http.HttpRequest;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.MediaType;
 import io.micronaut.http.MutableHttpRequest;
 import io.micronaut.http.client.HttpClient;
 import io.micronaut.http.client.exceptions.HttpClientResponseException;
+import net.onelitefeather.quelea.backend.security.TestJwtIssuer;
 
 import java.util.UUID;
 
@@ -17,12 +19,27 @@ public final class ApiClient {
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final HttpClient client;
+    private final String token;
 
-    public ApiClient(HttpClient client) {
+    public ApiClient(HttpClient client, TestJwtIssuer issuer) {
         this.client = client;
+        this.token = issuer.clientToken();
     }
 
+    /** Sends the request with a valid {@code Quelea.Client} token, unless the request already names an Authorization. */
     public Response send(MutableHttpRequest<?> request) {
+        if (request.getHeaders().contains(HttpHeaders.AUTHORIZATION)) {
+            return exchange(request);
+        }
+        return exchange(request.bearerAuth(this.token));
+    }
+
+    /** Sends the request without any Authorization header. */
+    public Response sendAnonymously(MutableHttpRequest<?> request) {
+        return exchange(request);
+    }
+
+    private Response exchange(MutableHttpRequest<?> request) {
         try {
             HttpResponse<String> response = client.toBlocking().exchange(request, String.class);
             return Response.of(response);
@@ -49,13 +66,15 @@ public final class ApiClient {
         return id;
     }
 
-    public record Response(int status, String contentType, String body) {
+    /** The status, content type, body and {@code WWW-Authenticate} challenge (empty when absent) of a reply. */
+    public record Response(int status, String contentType, String body, String challenge) {
 
         static Response of(HttpResponse<?> response) {
             return new Response(
                     response.getStatus().getCode(),
                     response.getContentType().map(MediaType::toString).orElse(""),
-                    response.getBody(String.class).orElse(""));
+                    response.getBody(String.class).orElse(""),
+                    java.util.Optional.ofNullable(response.getHeaders().get(HttpHeaders.WWW_AUTHENTICATE)).orElse(""));
         }
 
         public JsonNode json() {

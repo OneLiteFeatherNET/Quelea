@@ -7,3 +7,13 @@ micronaut:
   # Every test context starts its own server on a free port, so contexts never collide on 8080.
   server:
     port: -1
+  # Tokens are signed by TestJwtIssuer (no network, no Entra). These values must match its constants.
+  security:
+    token:
+      jwt:
+        claims-validators:
+          issuer: http://localhost:18090/quelea
+          audience: quelea-api
+quelea:
+  auth:
+    tenant-id: 00000000-0000-4000-8000-0000000000aa

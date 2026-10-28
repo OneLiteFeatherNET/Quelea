@@ -6,6 +6,7 @@ import io.micronaut.http.client.HttpClient;
 import io.micronaut.http.client.annotation.Client;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
+import net.onelitefeather.quelea.backend.security.TestJwtIssuer;
 import net.onelitefeather.quelea.backend.support.ApiClient;
 import net.onelitefeather.quelea.backend.support.ApiClient.Response;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,11 +26,14 @@ class PlayersControllerTest {
     @Client("/")
     HttpClient client;
 
+    @Inject
+    TestJwtIssuer jwt;
+
     private ApiClient api;
 
     @BeforeEach
     void setUp() {
-        api = new ApiClient(client);
+        api = new ApiClient(client, jwt);
     }
 
     @Test

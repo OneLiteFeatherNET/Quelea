@@ -33,6 +33,44 @@ Common fields: `type`, `title`, `status`, `detail`, `instance` (the request path
 - **When:** the request body is sent with a content type other than `application/json`.
 - **What to do:** send the body as JSON with `Content-Type: application/json`.
 
+## unauthorized
+
+- **Status:** 401
+- **When:** the request carries no `Authorization: Bearer` token, or the token is malformed, expired, signed by a
+  key the service does not trust, issued for another issuer, audience or tenant, or uses an algorithm other than
+  `RS256`. The response carries `WWW-Authenticate: Bearer`; when a token was sent it is
+  `Bearer error="invalid_token"`.
+- **What to do:** send a valid app-only access token for the Quelea API. If the token is expired, fetch a new one
+  and retry once. Do not retry an unchanged request with the same token.
+
+## forbidden
+
+- **Status:** 403
+- **When:** the token is valid but does not carry the app role `Quelea.Client`, or it is a delegated token (it carries
+  `scp`, a signed-in user). Delegated tokens are never accepted.
+- **What to do:** request an app-only token for a client that has been granted `Quelea.Client`. Do not retry with
+  the same token.
+
+## precondition-failed
+
+- **Status:** 412
+- **When:** an `If-Match` header names a party version that is no longer current, so the command was not run.
+  The party changed since the client read it.
+- **What to do:** read the party again, check the new state, and decide whether the command still applies.
+
+## idempotency-key-reused
+
+- **Status:** 422
+- **When:** an `Idempotency-Key` was already used for a request with another method, path or body.
+- **What to do:** use a new key for a new request. Repeat the original request with the original body to get its
+  stored result.
+
+## request-in-progress
+
+- **Status:** 409
+- **When:** a request with the same `Idempotency-Key` is still running. The response carries `Retry-After: 1`.
+- **What to do:** wait for the `Retry-After` delay and repeat the same request with the same key.
+
 ## party-not-found
 
 - **Status:** 404

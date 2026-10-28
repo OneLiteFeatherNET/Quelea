@@ -21,6 +21,11 @@ public enum PartyProblem {
     INVITE_NOT_FOUND("invite-not-found", HttpStatus.NOT_FOUND, "Invite not found"),
     CANNOT_TARGET_SELF("cannot-target-self", HttpStatus.BAD_REQUEST, "The action cannot target yourself"),
     LOCK_TIMEOUT("lock-timeout", HttpStatus.SERVICE_UNAVAILABLE, "The party is busy, try again"),
+    UNAUTHORIZED("unauthorized", HttpStatus.UNAUTHORIZED, "Authentication required"),
+    FORBIDDEN("forbidden", HttpStatus.FORBIDDEN, "Access denied"),
+    PRECONDITION_FAILED("precondition-failed", HttpStatus.PRECONDITION_FAILED, "Precondition failed"),
+    IDEMPOTENCY_KEY_REUSED("idempotency-key-reused", HttpStatus.UNPROCESSABLE_ENTITY, "Idempotency key reused"),
+    REQUEST_IN_PROGRESS("request-in-progress", HttpStatus.CONFLICT, "Request in progress"),
     INTERNAL_ERROR("internal-error", HttpStatus.INTERNAL_SERVER_ERROR, "Internal error");
 
     private final String code;

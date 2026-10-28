@@ -75,6 +75,11 @@ Set these on the service. Defaults are in `backend/src/main/resources/applicatio
 | `QUELEA_PROXY_TIMEOUT`         | `45s`                       | A proxy without a heartbeat for this long is treated as dead; its players are disconnected from their parties. |
 | `QUELEA_SSE_KEEPALIVE`         | `15s`                       | Interval of the keep-alive comment on idle event streams.                     |
 | `QUELEA_SSE_BUFFER`            | `256`                       | Events one stream may hold unread. A stream that overflows is closed.         |
+| `QUELEA_AUTH_ISSUER`           | `http://localhost:18090/quelea` | Token issuer (`iss`). Outside `dev`/`test` it must be an https URL, for example `https://login.microsoftonline.com/<tenant>/v2.0`. |
+| `QUELEA_AUTH_AUDIENCE`         | `quelea-api`                | Token audience (`aud`). Outside `dev`/`test` the client id GUID of the Quelea API registration. |
+| `QUELEA_AUTH_TENANT_ID`        | empty                       | Entra tenant id; tokens of another tenant are refused. Required outside `dev`/`test`. |
+| `QUELEA_AUTH_JWKS_URL`         | `http://localhost:18090/quelea/jwks` | Where the issuer publishes its signing keys (RS256 only).           |
+| `QUELEA_AUTH_CLOCK_SKEW`       | `60s`                       | Tolerated clock difference for `exp` and `nbf`. Between `0s` and `60s`; larger values stop the service. |
 | `LOG_JSON`                     | `false`                     | `true` writes logs as JSON with `trace_id` and `span_id`.                     |
 | `OTEL_TRACES_EXPORTER`         | `none`                      | Set to `otlp` to export traces.                                               |
 | `OTEL_EXPORTER_OTLP_ENDPOINT`  | `http://localhost:4317`     | OTLP gRPC endpoint for traces.                                                |

@@ -10,6 +10,7 @@ import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Produces;
 import io.micronaut.http.annotation.QueryValue;
 import io.micronaut.http.sse.Event;
+import io.micronaut.security.annotation.Secured;
 import io.micronaut.validation.Validated;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -21,6 +22,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Size;
 import net.onelitefeather.quelea.backend.event.EventBroadcaster;
 import net.onelitefeather.quelea.backend.event.PartyEvent;
+import net.onelitefeather.quelea.backend.security.Roles;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Exceptions;
@@ -37,6 +39,7 @@ import java.time.Duration;
  */
 @Validated
 @Controller("/v1/events")
+@Secured(Roles.CLIENT)
 @Tag(name = "events", description = "Party event stream for the proxies")
 public class EventController {
 

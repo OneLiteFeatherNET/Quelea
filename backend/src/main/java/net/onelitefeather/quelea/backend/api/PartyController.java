@@ -9,6 +9,7 @@ import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.PathVariable;
 import io.micronaut.http.annotation.Post;
 import io.micronaut.http.annotation.Status;
+import io.micronaut.security.annotation.Secured;
 import io.micronaut.validation.Validated;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -23,11 +24,13 @@ import net.onelitefeather.quelea.backend.party.PartyService;
 import net.onelitefeather.quelea.backend.problem.Problem;
 
 import java.util.UUID;
+import net.onelitefeather.quelea.backend.security.Roles;
 
 @Validated
 // Blocking Dragonfly calls and lock waits: keep them off the Netty event loop.
 @ExecuteOn(TaskExecutors.BLOCKING)
 @Controller("/v1/parties")
+@Secured(Roles.CLIENT)
 @Tag(name = "parties", description = "Party lifecycle and party commands")
 public class PartyController {
 

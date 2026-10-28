@@ -6,6 +6,7 @@ import io.micronaut.http.client.annotation.Client;
 import io.micronaut.runtime.server.EmbeddedServer;
 import io.micronaut.test.extensions.junit5.annotation.MicronautTest;
 import jakarta.inject.Inject;
+import net.onelitefeather.quelea.backend.security.TestJwtIssuer;
 import net.onelitefeather.quelea.backend.support.ApiClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,14 +51,17 @@ class EventStreamTest {
     @Client("/")
     HttpClient client;
 
+    @Inject
+    TestJwtIssuer jwt;
+
     private final java.net.http.HttpClient wire = java.net.http.HttpClient.newHttpClient();
     private ApiClient api;
     private WireStream stream;
 
     @BeforeEach
     void setUp() {
-        api = new ApiClient(client);
-        stream = new WireStream(server.getURI().resolve("/v1/events?proxyId=" + PROXY));
+        api = new ApiClient(client, jwt);
+        stream = new WireStream(server.getURI().resolve("/v1/events?proxyId=" + PROXY), jwt.clientToken());
     }
 
     @AfterEach
@@ -112,12 +116,16 @@ class EventStreamTest {
         private final StringBuilder received = new StringBuilder();
         private final AtomicReference<InputStream> body = new AtomicReference<>();
 
-        WireStream(URI uri) {
+        private final String token;
+
+        WireStream(URI uri, String token) {
+            this.token = token;
             Thread.startVirtualThread(() -> read(uri));
         }
 
         private void read(URI uri) {
-            HttpRequest request = HttpRequest.newBuilder(uri).header("Accept", "text/event-stream").GET().build();
+            HttpRequest request = HttpRequest.newBuilder(uri).header("Accept", "text/event-stream")
+                    .header("Authorization", "Bearer " + token).GET().build();
             try {
                 HttpResponse<InputStream> response = wire.send(request, BodyHandlers.ofInputStream());
                 body.set(response.body());
