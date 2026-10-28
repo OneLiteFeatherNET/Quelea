@@ -95,7 +95,7 @@ class EventStreamTest {
 
     @Test
     void streamOpensForClientIdWithoutProxyId() {
-        WireStream lobby = new WireStream(server.getURI().resolve("/v1/events?clientId=lobby-wire"));
+        WireStream lobby = new WireStream(server.getURI().resolve("/v1/events?clientId=lobby-wire"), jwt.clientToken());
         try {
             String received = lobby.awaitText(KEEP_ALIVE);
 
