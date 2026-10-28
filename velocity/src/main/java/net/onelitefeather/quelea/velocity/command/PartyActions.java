@@ -126,7 +126,7 @@ public final class PartyActions {
                 player.send(messages.message(locale, "command.warp.no-server"));
                 return;
             }
-            gateway.warp(party.id(), player.id().toString(), server.get());
+            gateway.warp(party.id(), player.id().toString(), server.get(), null);
             player.send(messages.message(locale, "command.warp.done", Placeholder.unparsed("server", server.get())));
         });
     }

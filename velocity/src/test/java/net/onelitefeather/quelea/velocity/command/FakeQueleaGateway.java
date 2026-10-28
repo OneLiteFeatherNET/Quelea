@@ -82,7 +82,7 @@ final class FakeQueleaGateway implements QueleaGateway {
     }
 
     @Override
-    public void warp(String partyId, String actorId, String server) {
+    public void warp(String partyId, String actorId, String server, String fromServer) {
         throw new UnsupportedOperationException();
     }
 

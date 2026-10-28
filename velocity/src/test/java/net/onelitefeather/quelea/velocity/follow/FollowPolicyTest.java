@@ -43,50 +43,47 @@ class FollowPolicyTest {
     }
 
     @Nested
-    class WarpTrigger {
-
-        @Test
-        void gameServerTriggersAWarp() {
-            assertTrue(lobbyMode().shouldTriggerWarp("Bounce-2"));
-        }
-
-        @Test
-        void returningToTheLobbyTriggersNoWarp() {
-            assertFalse(lobbyMode().shouldTriggerWarp("Lobby-2"));
-        }
-
-        @Test
-        void unknownServerTriggersNoWarp() {
-            assertFalse(lobbyMode().shouldTriggerWarp(null));
-        }
-    }
-
-    @Nested
     class LobbyMode {
 
         @Test
         void memberInALobbyFollowsToTheTarget() {
-            assertTrue(lobbyMode().shouldFollow("Lobby-1", "Bounce-2"));
+            assertTrue(lobbyMode().shouldFollow("Lobby-1", "Bounce-2", "Lobby-1"));
+        }
+
+        @Test
+        void memberOnTheOriginFollowsWhenTheLeaderLeftAGame() {
+            assertTrue(lobbyMode().shouldFollow("Bounce-2", "Lobby-2", "Bounce-2"));
         }
 
         @Test
         void memberInAnotherGameStaysPut() {
-            assertFalse(lobbyMode().shouldFollow("Tamias-1", "Bounce-2"));
+            assertFalse(lobbyMode().shouldFollow("Tamias-1", "Lobby-2", "Bounce-2"));
+        }
+
+        @Test
+        void memberInAnotherLobbyInstanceFollowsTheLeader() {
+            assertTrue(lobbyMode().shouldFollow("Lobby-1", "Lobby-2", "Bounce-2"));
         }
 
         @Test
         void memberAlreadyOnTheTargetIsNotConnectedAgain() {
-            assertFalse(lobbyMode().shouldFollow("Bounce-2", "Bounce-2"));
+            assertFalse(lobbyMode().shouldFollow("Bounce-2", "Bounce-2", "Lobby-1"));
         }
 
         @Test
         void memberOfUnknownServerDoesNotFollow() {
-            assertFalse(lobbyMode().shouldFollow(null, "Bounce-2"));
+            assertFalse(lobbyMode().shouldFollow(null, "Bounce-2", "Lobby-1"));
         }
 
         @Test
         void noTargetMeansNoMove() {
-            assertFalse(lobbyMode().shouldFollow("Lobby-1", null));
+            assertFalse(lobbyMode().shouldFollow("Lobby-1", null, "Bounce-2"));
+        }
+
+        @Test
+        void withoutAnOriginOnlyLobbyMembersFollow() {
+            assertTrue(lobbyMode().shouldFollow("Lobby-1", "Bounce-2", null));
+            assertFalse(lobbyMode().shouldFollow("Tamias-1", "Bounce-2", null));
         }
     }
 
@@ -95,22 +92,22 @@ class FollowPolicyTest {
 
         @Test
         void memberInALobbyFollows() {
-            assertTrue(alwaysMode().shouldFollow("Lobby-1", "Bounce-2"));
+            assertTrue(alwaysMode().shouldFollow("Lobby-1", "Bounce-2", "Lobby-1"));
         }
 
         @Test
         void memberInAnotherGameFollows() {
-            assertTrue(alwaysMode().shouldFollow("Tamias-1", "Bounce-2"));
+            assertTrue(alwaysMode().shouldFollow("Tamias-1", "Bounce-2", "Lobby-1"));
         }
 
         @Test
         void memberOfUnknownServerFollows() {
-            assertTrue(alwaysMode().shouldFollow(null, "Bounce-2"));
+            assertTrue(alwaysMode().shouldFollow(null, "Bounce-2", null));
         }
 
         @Test
         void memberAlreadyOnTheTargetDoesNotFollow() {
-            assertFalse(alwaysMode().shouldFollow("Bounce-2", "Bounce-2"));
+            assertFalse(alwaysMode().shouldFollow("Bounce-2", "Bounce-2", "Lobby-1"));
         }
     }
 }

@@ -92,7 +92,7 @@ public final class QueleaVelocity {
         VelocityLocalPlayers localPlayers = new VelocityLocalPlayers(proxy);
 
         proxy.getEventManager().register(this,
-                new PresenceListener(gateway, executor, config.proxyId(), follow, logger));
+                new PresenceListener(gateway, executor, config.proxyId(), logger));
 
         PartyActions actions = new PartyActions(gateway, executor, messages, logger);
         PartyCommands commands = new PartyCommands(actions, localPlayers, localPlayers::wrap, messages);

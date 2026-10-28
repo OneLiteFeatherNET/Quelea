@@ -537,6 +537,31 @@ class PartyServiceTest {
     }
 
     @Test
+    void warpWithOriginPublishesTheOriginAsFrom() {
+        PartyFixture f = new PartyFixture();
+        UUID alpha = f.online("Alpha");
+        Party party = f.partyService.create(alpha);
+
+        f.partyService.warp(party.id(), alpha, "Lobby-2", "Bounce-2", Precondition.NONE);
+
+        PartyEvent warp = lastEvent(f, "party.warp");
+        assertEquals("Lobby-2", warp.payload().get("server"), "the event must carry the target server name");
+        assertEquals("Bounce-2", warp.payload().get("from"), "the event must carry the server the leader left");
+    }
+
+    @Test
+    void warpWithoutOriginPublishesNoFrom() {
+        PartyFixture f = new PartyFixture();
+        UUID alpha = f.online("Alpha");
+        Party party = f.partyService.create(alpha);
+
+        f.partyService.warp(party.id(), alpha, "Bounce-2");
+
+        PartyEvent warp = lastEvent(f, "party.warp");
+        assertFalse(warp.payload().containsKey("from"), "a warp without an origin must not claim one: " + warp.payload());
+    }
+
+    @Test
     void warpByMemberIsNotLeader() {
         PartyFixture f = new PartyFixture();
         UUID alpha = f.online("Alpha");
