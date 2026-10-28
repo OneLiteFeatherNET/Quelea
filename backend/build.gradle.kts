@@ -12,7 +12,7 @@ dependencies {
     implementation(mn.micronaut.http.validation)
 
     implementation(mn.micronaut.runtime)
-    implementation(mn.validation)
+    implementation("io.micronaut.validation:micronaut-validation")
     implementation(mn.micronaut.management)
     implementation(mn.micronaut.micrometer.core)
     implementation(mn.micronaut.micrometer.registry.prometheus)
@@ -39,9 +39,9 @@ dependencies {
     testImplementation(mn.junit.jupiter.params)
     testRuntimeOnly(mn.junit.jupiter.engine)
     testImplementation(mn.micronaut.test.junit5)
-    // Redis integration tests (tagged "integration") run against a Dragonfly/Redis container.
-    testImplementation("org.testcontainers:testcontainers")
-    testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation(mn.micronaut.http.client)
+    // Redis integration tests (tagged "integration") run against a Redis container (pulls in Testcontainers).
+    testImplementation(mn.testcontainers.redis)
 }
 
 java {
