@@ -4,6 +4,14 @@ micronaut:
   server:
     # HTTP port of the service.
     port: ${PORT:8080}
+  metrics:
+    enabled: true
+    export:
+      otlp:
+        # Metrics are pushed to the OTLP/HTTP endpoint; off by default so local runs and tests export nothing.
+        enabled: ${QUELEA_METRICS_OTLP_ENABLED:false}
+        url: ${QUELEA_METRICS_OTLP_URL:`http://localhost:4318/v1/metrics`}
+        step: ${QUELEA_METRICS_OTLP_STEP:60s}
 
 # Dragonfly (Redis protocol) holds all party state. Defaults match docker/docker-compose.yml.
 redis:
@@ -38,19 +46,9 @@ endpoints:
     enabled: true
     sensitive: false
     details-visible: NEVER
-  prometheus:
-    enabled: true
-    sensitive: false
-
-micrometer:
-  metrics:
-    enabled: true
-    export:
-      prometheus:
-        enabled: true
 
 # OpenTelemetry - tracing is disabled unless OTEL_TRACES_EXPORTER=otlp is set (Docker/prod).
-# Metrics stay on Prometheus/Micrometer.
+# Metrics go through the Micrometer OTLP registry above. OTEL_SERVICE_NAME is set in the deployment.
 otel:
   service:
     name: ${OTEL_SERVICE_NAME:quelea}
@@ -68,4 +66,3 @@ otel:
   exclusions:
     - /health
     - /health/.*
-    - /prometheus
