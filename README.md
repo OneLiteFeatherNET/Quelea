@@ -93,7 +93,6 @@ Set these on the service. Defaults are in `backend/src/main/resources/applicatio
 | `QUELEA_METRICS_OTLP_ENABLED`  | `false`                     | `true` pushes metrics over OTLP/HTTP.                                         |
 | `QUELEA_METRICS_OTLP_URL`      | `http://localhost:4318/v1/metrics` | OTLP/HTTP metrics endpoint, for example `http://alloy-receiver.grafana.svc:4318/v1/metrics`. |
 | `QUELEA_METRICS_OTLP_STEP`     | `60s`                       | Interval at which metrics are pushed.                                         |
-| `OTEL_RESOURCE_ATTRIBUTES`     | (none)                      | Set `service.instance.id=<pod name>` when running more than one replica, otherwise the replicas' metric series overwrite each other. Read by the metrics and the trace exporter. |
 
 ### Plugin (`plugins/quelea/config.properties`)
 
@@ -123,7 +122,7 @@ The proxy keeps one SSE stream open to the service. The gateway route for the se
 ## Operations
 
 - **Health:** `GET /health`. Reports the state of the Dragonfly connection.
-- **Metrics:** pushed over OTLP/HTTP when `QUELEA_METRICS_OTLP_ENABLED=true`, to `QUELEA_METRICS_OTLP_URL` every `QUELEA_METRICS_OTLP_STEP`. There is no scrape endpoint; `/prometheus` answers 404. Names keep their Prometheus form in Mimir, for example `quelea_party_operations_total`.
+- **Metrics:** pushed over OTLP/HTTP when `QUELEA_METRICS_OTLP_ENABLED=true`, to `QUELEA_METRICS_OTLP_URL` every `QUELEA_METRICS_OTLP_STEP`. There is no scrape endpoint; `/prometheus` answers 404. Names keep their Prometheus form in Mimir, for example `quelea_party_operations_total`. Each replica reports its pod name (`HOSTNAME`) as `service.instance.id`.
   - `quelea_party_operations_total{operation,result}`: service calls by operation and result.
   - `quelea_parties_active`: parties currently stored.
   - `quelea_sse_streams`: open event streams on this replica.

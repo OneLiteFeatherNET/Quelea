@@ -12,6 +12,8 @@ micronaut:
         enabled: ${QUELEA_METRICS_OTLP_ENABLED:false}
         url: ${QUELEA_METRICS_OTLP_URL:`http://localhost:4318/v1/metrics`}
         step: ${QUELEA_METRICS_OTLP_STEP:60s}
+        # Kubernetes sets HOSTNAME to the pod name; without a per-pod instance id the replicas' series overwrite each other.
+        resource-attributes: service.name=${OTEL_SERVICE_NAME:quelea},service.instance.id=${HOSTNAME:local}
 
   # Resource server only: Entra ID app-only bearer tokens, no login flow, no session. A route without an @Secured
   # rule is rejected. The token must be signed by the issuer's JWKS (quelea.auth.jwks-url), come from the issuer
