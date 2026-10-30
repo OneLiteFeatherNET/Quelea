@@ -40,7 +40,8 @@ public class EventFanout {
         try {
             event = mapper.readValue(json, PartyEvent.class);
         } catch (IOException | RuntimeException e) {
-            LOG.warn("Dropping unparseable message on channel {}: {}", channel, e.getMessage());
+            // The parser's message quotes fragments of the payload, which carries player names: log the type only.
+            LOG.warn("Dropping unparseable message on channel {}: {}", channel, e.getClass().getSimpleName());
             return false;
         }
         if (event == null) {

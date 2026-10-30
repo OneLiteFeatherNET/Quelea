@@ -24,8 +24,18 @@
         </else>
     </if>
 
+    <!-- ERROR events go to Sentry, INFO and above become breadcrumbs. Attached under OTEL, not beside it: the OTel
+         appender hands its children an event whose MDC carries trace_id, while a sibling on root gets the original
+         event without it. The DSN is not set here: the Sentry bean (observability.SentryLifecycle) initialises the SDK
+         only when QUELEA_SENTRY_DSN is set, so without a DSN nothing is sent. -->
+    <appender name="SENTRY" class="io.sentry.logback.SentryAppender">
+        <minimumEventLevel>ERROR</minimumEventLevel>
+        <minimumBreadcrumbLevel>INFO</minimumBreadcrumbLevel>
+    </appender>
+
     <appender name="OTEL" class="io.opentelemetry.instrumentation.logback.mdc.v1_0.OpenTelemetryAppender">
         <appender-ref ref="STDOUT"/>
+        <appender-ref ref="SENTRY"/>
     </appender>
 
     <!-- Request bodies carry party chat messages and player names; the HTTP server and the netty handlers

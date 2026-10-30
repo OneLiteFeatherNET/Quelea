@@ -42,6 +42,11 @@ dependencies {
     // Enables the <if>/<then>/<else> conditional in logback.xml.
     runtimeOnly(libs.janino)
 
+    // Error reporting to Sentry (observability package). Only ERROR events are sent, and only when a DSN is set.
+    implementation(platform(libs.sentry.bom))
+    implementation(libs.sentry)
+    implementation(libs.sentry.logback)
+
     testImplementation(mn.junit.jupiter.api)
     testImplementation(mn.junit.jupiter.params)
     testRuntimeOnly(mn.junit.jupiter.engine)
@@ -111,6 +116,14 @@ tasks.named("optimizedBuildLayers") {
 // authentication off (application-dev.yml), which the start-up guard allows only there.
 tasks.named<JavaExec>("run") {
     environment("MICRONAUT_ENVIRONMENTS", "dev")
+}
+
+// The Sentry release of error reports is quelea@<version>. quelea-build.properties is a classpath resource whose
+// version is filled in from the project version at build time, so the running service knows its own version.
+tasks.named<ProcessResources>("processResources") {
+    filesMatching("quelea-build.properties") {
+        expand("version" to project.version)
+    }
 }
 
 // Integration tests (@Tag("integration")) need Docker for Testcontainers. Run the rest without it
