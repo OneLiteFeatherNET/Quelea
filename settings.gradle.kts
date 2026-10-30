@@ -48,6 +48,7 @@ dependencyResolutionManagement {
             version("micronaut", "5.0.2")
             version("velocity", "4.3.1")
             version("shadow", "9.6.1")
+            version("sentry", "8.62.0")
             version("jetbrains.annotations", "26.1.0")
             version("jackson", "2.22.4")
             version("jakarta-annotation", "3.0.0")
@@ -77,6 +78,9 @@ dependencyResolutionManagement {
             library("opentelemetry-logback-mdc", "io.opentelemetry.instrumentation", "opentelemetry-logback-mdc-1.0").versionRef("opentelemetry-instrumentation-alpha")
             library("janino", "org.codehaus.janino", "janino").versionRef("janino")
 
+            library("sentry-bom", "io.sentry", "sentry-bom").versionRef("sentry")
+            library("sentry", "io.sentry", "sentry").withoutVersion()
+            library("sentry-logback", "io.sentry", "sentry-logback").withoutVersion()
             plugin("micronaut.application", "io.micronaut.application").versionRef("micronaut")
             plugin("micronaut.aot", "io.micronaut.aot").versionRef("micronaut")
             plugin("shadow", "com.gradleup.shadow").versionRef("shadow")

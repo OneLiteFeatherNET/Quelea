@@ -102,6 +102,7 @@ class EventStreamTest {
                 eventsUri(),
                 tokens,
                 () -> seen.add("snapshot"),
+                () -> { },
                 message -> seen.add("event:" + message.id() + ":" + message.event()),
                 new Backoff(Duration.ofSeconds(1), Duration.ofSeconds(30)),
                 delay -> { },
@@ -138,6 +139,7 @@ class EventStreamTest {
                         throw new IllegalStateException("snapshot rejected");
                     }
                 },
+                () -> { },
                 message -> { },
                 new Backoff(Duration.ofSeconds(1), Duration.ofSeconds(30)),
                 delay -> { },

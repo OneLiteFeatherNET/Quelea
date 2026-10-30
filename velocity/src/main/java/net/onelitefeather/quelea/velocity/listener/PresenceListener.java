@@ -6,6 +6,7 @@ import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
+import net.onelitefeather.quelea.velocity.error.FailureReports;
 import net.onelitefeather.quelea.velocity.http.Party;
 import net.onelitefeather.quelea.velocity.http.PlayerRef;
 import net.onelitefeather.quelea.velocity.http.QueleaGateway;
@@ -25,12 +26,15 @@ public final class PresenceListener {
     private final QueleaGateway gateway;
     private final Executor executor;
     private final String proxyId;
+    private final FailureReports failures;
     private final Logger logger;
 
-    public PresenceListener(QueleaGateway gateway, Executor executor, String proxyId, Logger logger) {
+    public PresenceListener(QueleaGateway gateway, Executor executor, String proxyId, FailureReports failures,
+                            Logger logger) {
         this.gateway = gateway;
         this.executor = executor;
         this.proxyId = proxyId;
+        this.failures = failures;
         this.logger = logger;
     }
 
@@ -78,8 +82,10 @@ public final class PresenceListener {
                 call.run();
             } catch (QueleaProblemException | QueleaUnavailableException e) {
                 logger.warn("Presence update failed ({}): {}", action, e.getMessage());
+                failures.failure(e, null);
             } catch (RuntimeException e) {
                 logger.error("Presence update failed unexpectedly ({})", action, e);
+                failures.failure(e, null);
             }
         });
     }

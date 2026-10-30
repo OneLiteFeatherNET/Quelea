@@ -23,9 +23,11 @@ import java.util.regex.Pattern;
  * @param lobbyPattern regex that marks lobby server names
  * @param followMode  which members follow a warp
  * @param credentials the app registration used to get tokens; incomplete values mean the plugin sends no token
+ * @param sentryDsn   the Sentry DSN; {@code null} switches error reporting off. Never logged.
+ * @param sentryEnvironment the environment tag of reported errors
  */
 public record QueleaConfig(String url, String proxyId, String lobbyPattern, FollowMode followMode,
-                           ClientCredentials credentials) {
+                           ClientCredentials credentials, String sentryDsn, String sentryEnvironment) {
 
     public static final String FILE_NAME = "config.properties";
 
@@ -37,10 +39,13 @@ public record QueleaConfig(String url, String proxyId, String lobbyPattern, Foll
     public static final String ENV_CLIENT_ID = "QUELEA_CLIENT_ID";
     public static final String ENV_CLIENT_SECRET = "QUELEA_CLIENT_SECRET";
     public static final String ENV_AUTH_SCOPE = "QUELEA_AUTH_SCOPE";
+    public static final String ENV_SENTRY_DSN = "QUELEA_SENTRY_DSN";
+    public static final String ENV_SENTRY_ENVIRONMENT = "QUELEA_SENTRY_ENVIRONMENT";
 
     public static final String DEFAULT_URL = "http://localhost:8080";
     public static final String DEFAULT_LOBBY_PATTERN = "(?i)^lobby.*";
     public static final String DEFAULT_FOLLOW_MODE = "lobby";
+    public static final String DEFAULT_SENTRY_ENVIRONMENT = "production";
 
     public QueleaConfig {
         if (url == null || url.isBlank()) {
@@ -55,6 +60,9 @@ public record QueleaConfig(String url, String proxyId, String lobbyPattern, Foll
         }
         if (credentials == null) {
             throw new IllegalArgumentException("credentials must be set");
+        }
+        if (sentryEnvironment == null || sentryEnvironment.isBlank()) {
+            throw new IllegalArgumentException("sentryEnvironment must not be blank");
         }
     }
 
@@ -85,7 +93,9 @@ public record QueleaConfig(String url, String proxyId, String lobbyPattern, Foll
                         pick(env, ENV_TENANT_ID, properties, "tenant-id", null),
                         pick(env, ENV_CLIENT_ID, properties, "client-id", null),
                         pick(env, ENV_CLIENT_SECRET, properties, "client-secret", null),
-                        pick(env, ENV_AUTH_SCOPE, properties, "auth-scope", null)));
+                        pick(env, ENV_AUTH_SCOPE, properties, "auth-scope", null)),
+                pick(env, ENV_SENTRY_DSN, properties, "sentry-dsn", null),
+                pick(env, ENV_SENTRY_ENVIRONMENT, properties, "sentry-environment", DEFAULT_SENTRY_ENVIRONMENT));
     }
 
     private static String pick(Function<String, String> env, String envKey, Properties properties, String key,
@@ -123,6 +133,13 @@ public record QueleaConfig(String url, String proxyId, String lobbyPattern, Foll
 
                     # Who follows a warp: lobby (only members in a lobby) or always. QUELEA_FOLLOW_MODE
                     #follow-mode=lobby
+
+                    # Sentry DSN for error reports. Blank or unset: no errors are reported and Sentry is not contacted.
+                    # Prefer the environment for it. QUELEA_SENTRY_DSN
+                    #sentry-dsn=
+
+                    # Environment tag of the reported errors. QUELEA_SENTRY_ENVIRONMENT
+                    #sentry-environment=production
 
                     # Entra ID app registration of this plugin (see docs/entra-setup.md). Without all four values the
                     # plugin sends no token and only a dev backend accepts its requests. Prefer the environment

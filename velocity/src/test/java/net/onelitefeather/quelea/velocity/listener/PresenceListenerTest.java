@@ -4,7 +4,10 @@ import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import com.velocitypowered.api.proxy.server.ServerInfo;
+import net.onelitefeather.quelea.velocity.error.FailureReports;
+import net.onelitefeather.quelea.velocity.error.FakeErrorReporter;
 import net.onelitefeather.quelea.velocity.http.Invite;
+import net.onelitefeather.quelea.velocity.i18n.Messages;
 import net.onelitefeather.quelea.velocity.http.Member;
 import net.onelitefeather.quelea.velocity.http.Party;
 import net.onelitefeather.quelea.velocity.http.PlayerRef;
@@ -32,6 +35,7 @@ class PresenceListenerTest {
 
     private final RecordingGateway gateway = new RecordingGateway();
     private final PresenceListener listener = new PresenceListener(gateway, Runnable::run, "proxy-1",
+            new FailureReports(new FakeErrorReporter(), Messages.load(null, LoggerFactory.getLogger(PresenceListenerTest.class)), "proxy-1"),
             LoggerFactory.getLogger(PresenceListenerTest.class));
 
     /** A party led by Alice with Bob in it; Bob's connections are the member case. */

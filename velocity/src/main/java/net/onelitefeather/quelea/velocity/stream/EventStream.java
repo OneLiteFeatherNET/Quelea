@@ -28,6 +28,7 @@ public final class EventStream {
     private final URI uri;
     private final Optional<ClientCredentialsTokenProvider> tokens;
     private final Runnable onConnect;
+    private final Runnable onDisconnect;
     private final Consumer<SseMessage> onMessage;
     private final Backoff backoff;
     private final Sleeper sleeper;
@@ -38,12 +39,13 @@ public final class EventStream {
     private volatile Stream<String> body;
 
     public EventStream(HttpClient client, URI uri, Optional<ClientCredentialsTokenProvider> tokens,
-                       Runnable onConnect, Consumer<SseMessage> onMessage,
+                       Runnable onConnect, Runnable onDisconnect, Consumer<SseMessage> onMessage,
                        Backoff backoff, Sleeper sleeper, Logger logger) {
         this.client = client;
         this.uri = uri;
         this.tokens = tokens;
         this.onConnect = onConnect;
+        this.onDisconnect = onDisconnect;
         this.onMessage = onMessage;
         this.backoff = backoff;
         this.sleeper = sleeper;
@@ -89,6 +91,7 @@ public final class EventStream {
             if (!running) {
                 return;
             }
+            onDisconnect.run();
             try {
                 Duration delay = backoff.nextDelay();
                 logger.info("Reconnecting the event stream in {}", delay);

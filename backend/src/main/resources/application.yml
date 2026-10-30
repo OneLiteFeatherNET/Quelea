@@ -109,6 +109,10 @@ quelea:
     keepalive: ${QUELEA_SSE_KEEPALIVE:15s}
     # Undelivered events one stream may hold; a stream that overflows is closed and the client reconnects.
     buffer: ${QUELEA_SSE_BUFFER:256}
+  sentry:
+    # Error reports (ERROR logs and unhandled exceptions) go to Sentry. A blank DSN switches reporting off.
+    dsn: ${QUELEA_SENTRY_DSN:}
+    environment: ${QUELEA_SENTRY_ENVIRONMENT:production}
 
 endpoints:
   all:

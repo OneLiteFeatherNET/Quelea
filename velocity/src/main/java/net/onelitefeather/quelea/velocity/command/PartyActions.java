@@ -1,6 +1,7 @@
 package net.onelitefeather.quelea.velocity.command;
 
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.onelitefeather.quelea.velocity.error.FailureReports;
 import net.onelitefeather.quelea.velocity.http.Invite;
 import net.onelitefeather.quelea.velocity.http.Member;
 import net.onelitefeather.quelea.velocity.http.Party;
@@ -26,12 +27,15 @@ public final class PartyActions {
     private final QueleaGateway gateway;
     private final Executor executor;
     private final Messages messages;
+    private final FailureReports failures;
     private final Logger logger;
 
-    public PartyActions(QueleaGateway gateway, Executor executor, Messages messages, Logger logger) {
+    public PartyActions(QueleaGateway gateway, Executor executor, Messages messages, FailureReports failures,
+                        Logger logger) {
         this.gateway = gateway;
         this.executor = executor;
         this.messages = messages;
+        this.failures = failures;
         this.logger = logger;
     }
 
@@ -202,12 +206,15 @@ public final class PartyActions {
                 action.apply(locale);
             } catch (QueleaProblemException e) {
                 player.send(messages.problem(locale, e));
+                failures.failure(e, null);
             } catch (QueleaUnavailableException e) {
                 logger.warn("Party command failed for {}: {}", player.name(), e.getMessage());
                 player.send(messages.unavailable(locale));
+                failures.failure(e, null);
             } catch (RuntimeException e) {
                 logger.error("Party command failed unexpectedly for {}", player.name(), e);
                 player.send(messages.unavailable(locale));
+                failures.failure(e, null);
             }
         });
     }
