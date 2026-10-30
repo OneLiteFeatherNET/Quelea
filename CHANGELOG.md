@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/OneLiteFeatherNET/Quelea/compare/v0.3.0...v0.4.0) (2026-10-30)
+
+
+### Features
+
+* **observability:** report errors to sentry ([#23](https://github.com/OneLiteFeatherNET/Quelea/issues/23)) ([272d138](https://github.com/OneLiteFeatherNET/Quelea/commit/272d138f23b9c2628f78e06781ba9896fea23466))
+
 ## [0.3.0](https://github.com/OneLiteFeatherNET/Quelea/compare/v0.2.0...v0.3.0) (2026-10-28)
 
 
