@@ -105,6 +105,8 @@ public final class InMemoryPartyStore implements PartyStore {
         expiries.put(partyId, expireAt);
         if (warnAt != null) {
             warnings.put(partyId, warnAt);
+        } else {
+            warnings.remove(partyId);
         }
     }
 

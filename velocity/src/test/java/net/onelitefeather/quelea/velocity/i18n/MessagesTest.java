@@ -145,6 +145,12 @@ class MessagesTest {
     }
 
     @Test
+    void remainingMemberMessageExistsInBothLanguages() {
+        assertTrue(messages().hasKey(Locale.ENGLISH, "party.left.alone"), "English is missing party.left.alone");
+        assertTrue(messages().hasKey(Locale.GERMAN, "party.left.alone"), "German is missing party.left.alone");
+    }
+
+    @Test
     void germanExpiryMessageNamesTheMinutesLeft() {
         String text = plain(messages().line(Locale.GERMAN, "party.expiring", Placeholder.unparsed("minutes", "5")));
 

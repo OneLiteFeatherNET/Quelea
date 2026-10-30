@@ -99,6 +99,40 @@ class RedisPartyStoreTest {
     }
 
     @Test
+    void partyWithAloneSinceRoundTripsIt() {
+        Party alone = new Party(UUID.randomUUID(), UUID.randomUUID(), List.of(new Member(UUID.randomUUID(), "Alpha", NOW)),
+                NOW, 3, NOW.plus(Duration.ofMinutes(10)));
+
+        store.save(alone);
+
+        assertEquals(NOW.plus(Duration.ofMinutes(10)), store.find(alone.id()).orElseThrow().aloneSince(),
+                "the stored alone-since time must come back unchanged");
+    }
+
+    @Test
+    void partyStoredWithoutAloneSinceReadsItAsNullAndStartsAtCreation() {
+        Party legacy = party(UUID.randomUUID());
+
+        store.save(legacy);
+        Party read = store.find(legacy.id()).orElseThrow();
+
+        assertEquals(null, read.aloneSince(), "a party without a stored alone-since time must read it as null");
+        assertEquals(NOW, read.aloneStart(), "without alone-since, the alone period starts at creation");
+    }
+
+    @Test
+    void restartedAlonePeriodWithoutWarningDropsTheOldWarning() {
+        UUID party = UUID.randomUUID();
+        store.markAlone(party, NOW.plus(Duration.ofMinutes(30)), NOW.plus(Duration.ofMinutes(25)));
+
+        store.markAlone(party, NOW.plus(Duration.ofMinutes(60)), null);
+
+        assertTrue(store.dueWarnings(NOW.plus(Duration.ofMinutes(26))).isEmpty(),
+                "the warning of the earlier alone period must not fire after the restart without warning");
+        assertEquals(List.of(party), store.dueExpiries(NOW.plus(Duration.ofMinutes(60))), "the new expiry must be scheduled");
+    }
+
+    @Test
     void findReturnsEmptyForUnknownParty() {
         assertTrue(store.find(UUID.randomUUID()).isEmpty());
     }

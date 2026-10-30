@@ -40,7 +40,7 @@ public interface PartyStore {
 
     /**
      * Marks a party that has one member: its expiry is due at {@code expireAt}; its warning is due at
-     * {@code warnAt}, or never when {@code warnAt} is null.
+     * {@code warnAt}, or never when {@code warnAt} is null; a null {@code warnAt} also removes a warning set earlier.
      */
     void markAlone(UUID partyId, Instant expireAt, Instant warnAt);
 

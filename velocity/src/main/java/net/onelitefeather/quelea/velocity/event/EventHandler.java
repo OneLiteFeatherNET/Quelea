@@ -30,6 +30,7 @@ public final class EventHandler {
 
     private static final String EXPIRED_ALONE = "expired-alone";
     private static final String DISBANDED_BY_LEADER = "leader";
+    private static final String ALONE_KEY = "party.left.alone";
 
     private final LocalPlayers players;
     private final Messages messages;
@@ -50,9 +51,8 @@ public final class EventHandler {
             case "party.invited" -> invited(event);
             case "party.joined" -> notifyOthers(event, "party.joined", playerName(event));
             case "party.denied" -> notifyOthers(event, "party.denied", playerName(event));
-            case "party.left" -> notifyOthers(event, "party.left", playerName(event));
-            case "party.kicked" -> notifyMembers(event, event.leaderId(), event.field("playerId"), "party.kicked",
-                    playerName(event));
+            case "party.left" -> left(event);
+            case "party.kicked" -> kicked(event);
             case "party.leader-changed" -> leaderChanged(event);
             case "party.disbanded" -> disbanded(event);
             case "party.expiring" -> expiring(event);
@@ -112,6 +112,31 @@ public final class EventHandler {
     private void notifyOthers(PartyEvent event, String key, TagResolver... resolvers) {
         String actorId = event.field("playerId");
         notifyMembers(event, actorId, actorId, key, resolvers);
+    }
+
+    /** A leave that leaves one member tells that member the party stays open; a larger party keeps the generic line. */
+    private void left(PartyEvent event) {
+        if (event.members().size() == 1) {
+            sendTo(event.members().get(0).id(), ALONE_KEY, playerName(event));
+            return;
+        }
+        notifyOthers(event, "party.left", playerName(event));
+    }
+
+    /**
+     * A kick that leaves one member: the kicked player gets the self line, and the remaining member (the kicking
+     * leader, who is the actor) gets the alone line, which the command answer does not give.
+     */
+    private void kicked(PartyEvent event) {
+        if (event.members().size() != 1) {
+            notifyMembers(event, event.leaderId(), event.field("playerId"), "party.kicked", playerName(event));
+            return;
+        }
+        String kickedId = event.field("playerId");
+        if (kickedId != null) {
+            sendTo(kickedId, "party.kicked.self", playerName(event));
+        }
+        sendTo(event.members().get(0).id(), ALONE_KEY, playerName(event));
     }
 
     private void leaderChanged(PartyEvent event) {
