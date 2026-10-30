@@ -16,7 +16,8 @@ context: |
      resynchronise by reading state after a reconnect.
   3. Errors are RFC 9457 Problem Details (application/problem+json) from one global handler.
   4. OpenTelemetry tracing and metrics over OTLP (metrics through the Micrometer OTLP registry),
-     JSON logs with trace ids.
+     JSON logs with trace ids. Errors (not traces or performance data) are additionally reported to
+     Sentry, without personal data (`sendDefaultPii` off); reporting is off when no DSN is configured.
   5. Every client authenticates with an Entra ID app-only token carrying the app role
      `Quelea.Client`; only health and the API documentation are anonymous. Rate limiting lives in
      Envoy Gateway, not in the service.
