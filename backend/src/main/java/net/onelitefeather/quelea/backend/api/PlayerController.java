@@ -6,6 +6,7 @@ import io.micronaut.core.annotation.Nullable;
 import io.micronaut.http.HttpHeaders;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.HttpStatus;
+import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.Header;
@@ -14,6 +15,7 @@ import io.micronaut.http.annotation.Post;
 import io.micronaut.http.annotation.Status;
 import io.micronaut.security.annotation.Secured;
 import io.micronaut.validation.Validated;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
@@ -24,6 +26,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import net.onelitefeather.quelea.backend.party.Invite;
+import net.onelitefeather.quelea.backend.party.JoinOutcome;
+import net.onelitefeather.quelea.backend.party.JoinRequest;
 import net.onelitefeather.quelea.backend.party.Party;
 import net.onelitefeather.quelea.backend.party.PartyService;
 import net.onelitefeather.quelea.backend.problem.Problem;
@@ -106,6 +110,55 @@ public class PlayerController {
     })
     public void deny(@PathVariable UUID playerId, @PathVariable UUID partyId) {
         metrics.run("deny", () -> parties.deny(playerId, partyId));
+    }
+
+    @Post("/{playerId}/party/join")
+    @Operation(operationId = "joinParty", summary = "Join the public party of an online player by name")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "The party after the join",
+                    headers = @io.swagger.v3.oas.annotations.headers.Header(name = HttpHeaders.ETAG,
+                            description = "Strong entity tag of the party: its version, for example \"4\"",
+                            schema = @Schema(type = "string")),
+                    content = @Content(schema = @Schema(implementation = Party.class))),
+            @ApiResponse(responseCode = "403", description = "The player was removed from the party",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class))),
+            @ApiResponse(responseCode = "404", description = "The player is offline, the target is not in a party, or the player is not online",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class))),
+            @ApiResponse(responseCode = "409", description = "The player is in a party, the party is not public, or it is full",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class)))
+    })
+    public HttpResponse<Party> join(@PathVariable UUID playerId, @Body @Valid TargetNameRequest request) {
+        return metrics.record("join", () -> PartyResponses.ok(parties.join(playerId, request.targetName())));
+    }
+
+    @Post("/{playerId}/party/requests")
+    @Operation(operationId = "requestJoin", summary = "Ask the party of an online player to let you in; a public party admits you at once")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "The party is public: the player joined it directly",
+                    headers = @io.swagger.v3.oas.annotations.headers.Header(name = HttpHeaders.ETAG,
+                            description = "Strong entity tag of the party: its version, for example \"4\"",
+                            schema = @Schema(type = "string")),
+                    content = @Content(schema = @Schema(implementation = Party.class))),
+            @ApiResponse(responseCode = "201", description = "The party is private: the request is open until its expiry",
+                    content = @Content(schema = @Schema(implementation = JoinRequest.class))),
+            @ApiResponse(responseCode = "403", description = "The player was removed from the party",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class))),
+            @ApiResponse(responseCode = "404", description = "The player is offline, or the target is not in a party",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class))),
+            @ApiResponse(responseCode = "409", description = "The player is in a party, a request is already open, or the party is full",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class))),
+            @ApiResponse(responseCode = "429", description = "The player asked too recently; Retry-After gives the seconds left",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class)))
+    })
+    public HttpResponse<?> requestJoin(@PathVariable UUID playerId, @Body @Valid TargetNameRequest request) {
+        return metrics.record("request", () -> joinOutcome(parties.requestJoin(playerId, request.targetName())));
+    }
+
+    private static HttpResponse<?> joinOutcome(JoinOutcome outcome) {
+        return switch (outcome) {
+            case JoinOutcome.Joined joined -> PartyResponses.ok(joined.party());
+            case JoinOutcome.Requested requested -> HttpResponse.created(requested.request());
+        };
     }
 
     @Post("/{playerId}/party/leave")

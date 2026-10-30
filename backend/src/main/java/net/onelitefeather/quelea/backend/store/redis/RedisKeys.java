@@ -84,6 +84,26 @@ public class RedisKeys {
         return prefix + "idem:" + client + ":" + keyHash;
     }
 
+    /** An open join request as JSON, expiring with the request TTL. */
+    public String joinRequest(UUID partyId, UUID playerId) {
+        return prefix + "join-request:" + partyId + ":" + playerId;
+    }
+
+    /** A player's cooldown for one party; present while the player may not ask the party again. */
+    public String joinCooldown(UUID partyId, UUID playerId) {
+        return prefix + "join-cooldown:" + partyId + ":" + playerId;
+    }
+
+    /** Players with a request or a cooldown for the party; entries may be stale and go away with the party. */
+    public String requesters(UUID partyId) {
+        return prefix + "party:" + partyId + ":requesters";
+    }
+
+    /** Players the party has kicked and not invited since; a set of player ids, removed with the party. */
+    public String bans(UUID partyId) {
+        return prefix + "party:" + partyId + ":bans";
+    }
+
     /** A distributed lock; {@code name} is the lock name as passed to {@code LockService}. */
     public String lock(String name) {
         return prefix + "lock:" + name;

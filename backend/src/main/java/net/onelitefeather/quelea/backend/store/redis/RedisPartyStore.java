@@ -8,6 +8,7 @@ import io.micronaut.context.annotation.Requires;
 import io.micronaut.serde.ObjectMapper;
 import jakarta.inject.Singleton;
 import net.onelitefeather.quelea.backend.party.Invite;
+import net.onelitefeather.quelea.backend.party.JoinRequest;
 import net.onelitefeather.quelea.backend.party.Party;
 import net.onelitefeather.quelea.backend.party.port.PartyStore;
 
@@ -149,6 +150,72 @@ public class RedisPartyStore implements PartyStore {
     @Override
     public void clearWarning(UUID partyId) {
         commands.zrem(keys.aloneWarn(), partyId.toString());
+    }
+
+    @Override
+    public void saveJoinRequest(JoinRequest request, Duration ttl) {
+        commands.set(keys.joinRequest(request.partyId(), request.requesterId()), write(request),
+                SetArgs.Builder.px(ttl.toMillis()));
+        commands.sadd(keys.requesters(request.partyId()), request.requesterId().toString());
+    }
+
+    @Override
+    public Optional<JoinRequest> findJoinRequest(UUID partyId, UUID requesterId) {
+        return Optional.ofNullable(commands.get(keys.joinRequest(partyId, requesterId)))
+                .map(value -> read(value, JoinRequest.class));
+    }
+
+    @Override
+    public void deleteJoinRequest(UUID partyId, UUID requesterId) {
+        commands.del(keys.joinRequest(partyId, requesterId));
+    }
+
+    @Override
+    public void setCooldown(UUID partyId, UUID requesterId, Duration ttl) {
+        commands.set(keys.joinCooldown(partyId, requesterId), "1", SetArgs.Builder.px(ttl.toMillis()));
+        commands.sadd(keys.requesters(partyId), requesterId.toString());
+    }
+
+    @Override
+    public Duration cooldownLeft(UUID partyId, UUID requesterId) {
+        // PTTL is -2 when the key is gone; the server's clock decides, so the cooldown ends exactly at its TTL.
+        Long millis = commands.pttl(keys.joinCooldown(partyId, requesterId));
+        return millis == null || millis <= 0 ? Duration.ZERO : Duration.ofMillis(millis);
+    }
+
+    @Override
+    public void clearCooldown(UUID partyId, UUID requesterId) {
+        commands.del(keys.joinCooldown(partyId, requesterId));
+    }
+
+    @Override
+    public void deleteRequestsOf(UUID partyId) {
+        String index = keys.requesters(partyId);
+        for (String requesterId : commands.smembers(index)) {
+            UUID requester = UUID.fromString(requesterId);
+            commands.del(keys.joinRequest(partyId, requester), keys.joinCooldown(partyId, requester));
+        }
+        commands.del(index);
+    }
+
+    @Override
+    public void ban(UUID partyId, UUID playerId) {
+        commands.sadd(keys.bans(partyId), playerId.toString());
+    }
+
+    @Override
+    public void unban(UUID partyId, UUID playerId) {
+        commands.srem(keys.bans(partyId), playerId.toString());
+    }
+
+    @Override
+    public boolean isBanned(UUID partyId, UUID playerId) {
+        return Boolean.TRUE.equals(commands.sismember(keys.bans(partyId), playerId.toString()));
+    }
+
+    @Override
+    public void deleteBans(UUID partyId) {
+        commands.del(keys.bans(partyId));
     }
 
     private List<UUID> due(String sortedSet, Instant now) {

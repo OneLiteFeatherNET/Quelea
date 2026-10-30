@@ -1,6 +1,7 @@
 package net.onelitefeather.quelea.backend.party.port;
 
 import net.onelitefeather.quelea.backend.party.Invite;
+import net.onelitefeather.quelea.backend.party.JoinRequest;
 import net.onelitefeather.quelea.backend.party.Party;
 
 import java.time.Duration;
@@ -54,4 +55,32 @@ public interface PartyStore {
     List<UUID> dueExpiries(Instant now);
 
     void clearWarning(UUID partyId);
+
+    /** Stores an open join request; it expires with {@code ttl}. */
+    void saveJoinRequest(JoinRequest request, Duration ttl);
+
+    /** Must not return expired requests. */
+    Optional<JoinRequest> findJoinRequest(UUID partyId, UUID requesterId);
+
+    void deleteJoinRequest(UUID partyId, UUID requesterId);
+
+    /** Starts a cooldown of {@code ttl} for the player's requests to the party. */
+    void setCooldown(UUID partyId, UUID requesterId, Duration ttl);
+
+    /** The time left in the player's cooldown for the party; zero when there is none. */
+    Duration cooldownLeft(UUID partyId, UUID requesterId);
+
+    void clearCooldown(UUID partyId, UUID requesterId);
+
+    /** Removes every open request and cooldown of the party; called when the party is disbanded. */
+    void deleteRequestsOf(UUID partyId);
+
+    void ban(UUID partyId, UUID playerId);
+
+    void unban(UUID partyId, UUID playerId);
+
+    boolean isBanned(UUID partyId, UUID playerId);
+
+    /** Removes the ban set of the party; called when the party is disbanded. */
+    void deleteBans(UUID partyId);
 }

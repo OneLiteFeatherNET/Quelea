@@ -94,6 +94,12 @@ quelea:
     alone-warning: ${QUELEA_PARTY_ALONE_WARNING:5m}
     # How often the expiry job runs (one replica per run, under a lock).
     expiry-interval: ${QUELEA_PARTY_EXPIRY_INTERVAL:15s}
+    # Maximum number of members of a public party, counting the leader; raised to max-size when lower.
+    public-max-size: ${QUELEA_PARTY_PUBLIC_MAX_SIZE:20}
+    # How long a join request stays open before it expires.
+    join-request-ttl: ${QUELEA_JOIN_REQUEST_TTL:60s}
+    # How long a player must wait to ask the same party again after a denial or an expiry.
+    join-request-cooldown: ${QUELEA_JOIN_REQUEST_COOLDOWN:60s}
   presence:
     # A proxy that has not sent a heartbeat for this long is treated as dead and its players are disconnected.
     proxy-timeout: ${QUELEA_PROXY_TIMEOUT:45s}
