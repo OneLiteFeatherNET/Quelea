@@ -34,6 +34,7 @@ public final class Messages {
 
     private static final String PROBLEM_PREFIX = "problem.";
     private static final String UNKNOWN_PROBLEM = "problem.unknown";
+    private static final String COOLDOWN_CODE = "join-request-cooldown";
     private static final String ENGLISH = "en";
     private static final List<String> BUILT_IN = List.of(ENGLISH, "de");
     private static final String FILE_PREFIX = "messages_";
@@ -100,6 +101,11 @@ public final class Messages {
      */
     public Component problem(Locale locale, QueleaProblemException problem) {
         String key = PROBLEM_PREFIX + problem.code();
+        // The cooldown names the wait only when the service said how long it is; otherwise the plain text is shown.
+        if (COOLDOWN_CODE.equals(problem.code()) && problem.retryAfterSeconds().isPresent()) {
+            return message(locale, key + ".wait",
+                    Placeholder.unparsed("seconds", String.valueOf(problem.retryAfterSeconds().get())));
+        }
         if (hasKey(locale, key)) {
             return message(locale, key);
         }

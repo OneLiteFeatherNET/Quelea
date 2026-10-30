@@ -24,6 +24,8 @@ Events are delivered at most once. A proxy that reconnects does not receive even
 
 **Lonely parties.** A party that has only one member after `QUELEA_PARTY_ALONE_TIMEOUT` is disbanded. The timeout counts from the creation or from the leave or kick that left that one member, and a join ends it. A leave or kick that leaves one member keeps the party open. `QUELEA_PARTY_ALONE_WARNING` before that, the service publishes `party.expiring` with the expiry time, and the proxy tells the leader how many minutes are left. Expired parties are disbanded with the reason `expired-alone`. Every `party.disbanded` event carries a `reason`: `leader` (the leader disbanded), `last-member-left` (no member remained) or `expired-alone`. Clients must treat an unknown reason like `leader`.
 
+**Join requests and public parties.** A player outside a party may ask the party of an online player to let them in (`POST /v1/players/{playerId}/party/requests`). A private party records the request for its leader, who answers it with `POST /v1/parties/{partyId}/join-requests/accept` or `.../reject`; the service publishes `party.join-requested` and `party.join-request-answered`. A request expires after `QUELEA_JOIN_REQUEST_TTL`, unanswered and without an event. A denial or an expiry starts a cooldown (`QUELEA_JOIN_REQUEST_COOLDOWN`) during which the player gets `429 join-request-cooldown` with `Retry-After`. A leader opens a party with `POST /v1/parties/{partyId}/public` (`public: true`); while it is open, a join (`POST /v1/players/{playerId}/party/join`) or a request admits the player at once, up to `QUELEA_PARTY_PUBLIC_MAX_SIZE`. Closing needs no permission and keeps the members. A change of leader closes the party. A player kicked from a party cannot join or request it until the leader invites them. Bans, open requests and cooldowns end with the party.
+
 **Party versions and conditional requests.** Every party has a `version`: 1 when it is created, +1 with every change. It is in the party JSON and in every event. `GET /v1/parties/{id}` and `GET /v1/players/{id}/party` send it as a strong `ETag` (for example `"4"`) and answer `304 Not Modified` without a body when `If-None-Match` names the current tag. `kick`, `promote`, `disband` and `warp` accept `If-Match` with one or more strong tags or `*`. If none matches the current version, the command changes nothing and answers `412 precondition-failed`. A weak tag (`W/`) never matches. Without the header the command runs unconditionally.
 
 **Retries.** A `POST` may carry an `Idempotency-Key` header (1 to 255 visible ASCII characters). The first request with a key runs; a 2xx response is stored for `QUELEA_IDEMPOTENCY_TTL`, and a repeat with the same key and the same request is answered with the stored response without running again. The key is scoped to the authenticated client. The same key with another request answers `422 idempotency-key-reused`; a repeat while the first request is still running answers `409 request-in-progress` with `Retry-After: 1`. Failed responses are not stored, so a retry after an error runs again. The key is kept for `QUELEA_IDEMPOTENCY_LOCK` while a request runs, so a crashed request does not block its key for longer than that.
@@ -48,6 +50,12 @@ Events are delivered at most once. A proxy that reconnects does not receive even
 | `/party invite <player>`   | leader             | Invites an online player. Creates a party if you are not in one. The invite expires after 60 s. |
 | `/party accept [inviter]`  | invited player     | Joins the party. Without a name, works when exactly one invite is pending; otherwise lists the inviters. |
 | `/party deny [inviter]`    | invited player     | Declines an invite. Same name rule as `accept`.                                         |
+| `/party public on`         | leader with `quelea.party.public` | Opens the party to everyone: anyone can join it by name with `/party join`. Without the permission the proxy refuses and nothing is sent to the service. |
+| `/party public off`        | leader             | Closes the party again. Needs no permission, so a leader who lost it can still close. Members stay. |
+| `/party request <player>`  | player not in a party | Asks the party of an online player to let you in. A public party lets you in at once; a private one tells its leader, who answers within 60 s. After a denial or an expiry you wait 60 s before asking again. |
+| `/party join <player>`     | player not in a party | Joins the party of an online player directly. Only works for a public party; a private one names `/party request`. |
+| `/party approve <player>`  | leader             | Accepts the join request of a player. The leader's prompt offers the same as clickable `[Accept]`. |
+| `/party reject <player>`   | leader             | Declines the join request of a player. The leader's prompt offers the same as clickable `[Deny]`. |
 | `/party leave`             | member             | Leaves the party. If the leader leaves, the longest-standing member becomes leader.     |
 | `/party kick <player>`     | leader             | Removes a member.                                                                       |
 | `/party promote <player>`  | leader             | Makes a member the leader.                                                              |
@@ -57,6 +65,10 @@ Events are delivered at most once. A proxy that reconnects does not receive even
 | `/pc <message>`            | member             | Sends a message to the party chat (1 to 256 characters).                                |
 
 Messages are shown in English or German, following the player's client language.
+
+**Public parties and the permission.** Opening a party (`/party public on`) needs the Velocity permission `quelea.party.public`; the proxy checks it before it calls the service. Closing needs no permission. A change of leader (promotion, or a leader who leaves) closes an open party: the new leader is told, and is told how to reopen it only if they hold the permission. A public party admits up to `QUELEA_PARTY_PUBLIC_MAX_SIZE` members, and a kicked player cannot join or request the party until the leader invites them again.
+
+**Every proxy needs the new plugin.** A request reaches the leader only through the proxy the leader is on. Install the plugin version with `/party request` on every proxy before players use it; a proxy with an older plugin drops the prompt silently, and the request then expires.
 
 ### Languages and message overrides
 
@@ -90,6 +102,9 @@ Set these on the service. Defaults are in `backend/src/main/resources/applicatio
 | `QUELEA_PARTY_ALONE_TIMEOUT`   | `30m`                       | A party that has only one member for this long is disbanded with reason `expired-alone`. |
 | `QUELEA_PARTY_ALONE_WARNING`   | `5m`                        | `party.expiring` is published this long before the expiry. `0s` disables the warning. |
 | `QUELEA_PARTY_EXPIRY_INTERVAL` | `15s`                       | How often the expiry job runs; one replica per run, under a lock. The expiry can be this late. |
+| `QUELEA_PARTY_PUBLIC_MAX_SIZE` | `20`                        | Maximum members of a public party, counting the leader. Raised to `QUELEA_PARTY_MAX_SIZE` when lower. |
+| `QUELEA_JOIN_REQUEST_TTL`      | `60s`                       | How long a join request to a private party stays open before it expires. |
+| `QUELEA_JOIN_REQUEST_COOLDOWN` | `60s`                       | How long a player waits before asking the same party again after a denial or an expiry. |
 | `QUELEA_PROXY_TIMEOUT`         | `45s`                       | A proxy without a heartbeat for this long is treated as dead; its players are disconnected from their parties. |
 | `QUELEA_SSE_KEEPALIVE`         | `15s`                       | Interval of the keep-alive comment on idle event streams.                     |
 | `QUELEA_SSE_BUFFER`            | `256`                       | Events one stream may hold unread. A stream that overflows is closed.         |

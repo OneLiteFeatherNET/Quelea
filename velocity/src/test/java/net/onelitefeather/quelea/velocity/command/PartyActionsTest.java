@@ -45,7 +45,7 @@ class PartyActionsTest {
         FailureReports failures = new FailureReports(reporter, messages, PROXY_ID);
         // Runs the work on the calling thread, so the answer is there when the call returns.
         return new PartyActions(gateway, Runnable::run, messages, failures,
-                LoggerFactory.getLogger(PartyActionsTest.class));
+                LoggerFactory.getLogger(PartyActionsTest.class), java.time.Clock.fixed(NOW, java.time.ZoneOffset.UTC));
     }
 
     private static Party party() {

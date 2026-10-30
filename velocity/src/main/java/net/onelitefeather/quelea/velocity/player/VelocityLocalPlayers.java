@@ -53,6 +53,11 @@ public final class VelocityLocalPlayers implements LocalPlayers {
         }
 
         @Override
+        public boolean hasPermission(String permission) {
+            return player.hasPermission(permission);
+        }
+
+        @Override
         public Locale locale() {
             return player.getEffectiveLocale();
         }

@@ -33,9 +33,22 @@ public final class FakeLocalPlayer implements LocalPlayer {
         this.currentServer = currentServer;
     }
 
+    private final java.util.Set<String> permissions = new java.util.HashSet<>();
+
     public FakeLocalPlayer refusingConnections() {
         this.outcome = ConnectOutcome.REFUSED;
         return this;
+    }
+
+    /** Grants the Velocity permission {@code permission} to this player. */
+    public FakeLocalPlayer withPermission(String permission) {
+        permissions.add(permission);
+        return this;
+    }
+
+    @Override
+    public boolean hasPermission(String permission) {
+        return permissions.contains(permission);
     }
 
     public List<Component> sent() {

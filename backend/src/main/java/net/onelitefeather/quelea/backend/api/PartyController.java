@@ -197,6 +197,74 @@ public class PartyController {
                 new Precondition(ifMatch)));
     }
 
+    @Post("/{partyId}/public")
+    @Operation(operationId = "setPublic", summary = "Open or close the party to everyone (leader only). Opening needs the proxy permission; closing does not")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "The party after the change",
+                    headers = @io.swagger.v3.oas.annotations.headers.Header(name = HttpHeaders.ETAG, description = ETAG_DESCRIPTION,
+                            schema = @Schema(type = "string")),
+                    content = @Content(schema = @Schema(implementation = Party.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid body",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class))),
+            @ApiResponse(responseCode = "403", description = "Not the leader",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class))),
+            @ApiResponse(responseCode = "404", description = "The party does not exist",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class))),
+            @ApiResponse(responseCode = "412", description = "If-Match names another version; the party is unchanged",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class)))
+    })
+    public HttpResponse<Party> setPublic(@PathVariable UUID partyId, @Body @Valid PublicPartyRequest request,
+                                         @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.IF_MATCH, description = IF_MATCH_DESCRIPTION)
+                                         @Nullable @Header(HttpHeaders.IF_MATCH) String ifMatch) {
+        return metrics.record("public", () -> PartyResponses.ok(
+                parties.setPublic(partyId, request.actorId(), request.open(), new Precondition(ifMatch))));
+    }
+
+    @Post("/{partyId}/join-requests/accept")
+    @Operation(operationId = "acceptJoinRequest", summary = "Accept a player's join request (leader only)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "The party after the join",
+                    headers = @io.swagger.v3.oas.annotations.headers.Header(name = HttpHeaders.ETAG, description = ETAG_DESCRIPTION,
+                            schema = @Schema(type = "string")),
+                    content = @Content(schema = @Schema(implementation = Party.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid body",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class))),
+            @ApiResponse(responseCode = "403", description = "Not the leader, or the player is banned",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class))),
+            @ApiResponse(responseCode = "404", description = "The party, the player or the open request does not exist",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class))),
+            @ApiResponse(responseCode = "409", description = "The player is in a party or the party is full",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class))),
+            @ApiResponse(responseCode = "412", description = "If-Match names another version; the party is unchanged",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class)))
+    })
+    public HttpResponse<Party> acceptJoinRequest(@PathVariable UUID partyId, @Body @Valid JoinAnswerRequest request,
+                                                 @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.IF_MATCH, description = IF_MATCH_DESCRIPTION)
+                                                 @Nullable @Header(HttpHeaders.IF_MATCH) String ifMatch) {
+        return metrics.record("accept", () -> PartyResponses.ok(
+                parties.acceptRequest(partyId, request.actorId(), request.requesterName(), new Precondition(ifMatch))));
+    }
+
+    @Post("/{partyId}/join-requests/reject")
+    @Status(HttpStatus.NO_CONTENT)
+    @Operation(operationId = "rejectJoinRequest", summary = "Reject a player's join request (leader only); starts the player's cooldown")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "The request was rejected"),
+            @ApiResponse(responseCode = "400", description = "Invalid body",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class))),
+            @ApiResponse(responseCode = "403", description = "Not the leader",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class))),
+            @ApiResponse(responseCode = "404", description = "The party, the player or the open request does not exist",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class))),
+            @ApiResponse(responseCode = "412", description = "If-Match names another version; the request is unchanged",
+                    content = @Content(mediaType = PROBLEM, schema = @Schema(implementation = Problem.class)))
+    })
+    public void rejectJoinRequest(@PathVariable UUID partyId, @Body @Valid JoinAnswerRequest request,
+                                  @Parameter(in = ParameterIn.HEADER, name = HttpHeaders.IF_MATCH, description = IF_MATCH_DESCRIPTION)
+                                  @Nullable @Header(HttpHeaders.IF_MATCH) String ifMatch) {
+        metrics.run("reject", () -> parties.rejectRequest(partyId, request.actorId(), request.requesterName(), new Precondition(ifMatch)));
+    }
+
     @Post("/{partyId}/chat")
     @Status(HttpStatus.ACCEPTED)
     @Operation(operationId = "chat", summary = "Send a chat message to the party (members only)")

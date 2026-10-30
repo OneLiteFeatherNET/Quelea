@@ -79,7 +79,28 @@ public final class PartyCommands {
                 .then(BrigadierCommand.literalArgumentBuilder("list")
                         .executes(context -> playersOnly(context.getSource(), actions::list)))
                 .then(BrigadierCommand.literalArgumentBuilder("warp")
-                        .executes(context -> playersOnly(context.getSource(), actions::warp)));
+                        .executes(context -> playersOnly(context.getSource(), actions::warp)))
+                .then(BrigadierCommand.literalArgumentBuilder("public")
+                        .then(BrigadierCommand.literalArgumentBuilder("on")
+                                .executes(context -> playersOnly(context.getSource(), actions::publicOn)))
+                        .then(BrigadierCommand.literalArgumentBuilder("off")
+                                .executes(context -> playersOnly(context.getSource(), actions::publicOff))))
+                .then(BrigadierCommand.literalArgumentBuilder("request")
+                        .then(playerArgument()
+                                .executes(context -> playersOnly(context.getSource(),
+                                        player -> actions.request(player, playerName(context))))))
+                .then(BrigadierCommand.literalArgumentBuilder("join")
+                        .then(playerArgument()
+                                .executes(context -> playersOnly(context.getSource(),
+                                        player -> actions.join(player, playerName(context))))))
+                .then(BrigadierCommand.literalArgumentBuilder("approve")
+                        .then(playerArgument()
+                                .executes(context -> playersOnly(context.getSource(),
+                                        player -> actions.approve(player, playerName(context))))))
+                .then(BrigadierCommand.literalArgumentBuilder("reject")
+                        .then(playerArgument()
+                                .executes(context -> playersOnly(context.getSource(),
+                                        player -> actions.reject(player, playerName(context))))));
         return new BrigadierCommand(root);
     }
 

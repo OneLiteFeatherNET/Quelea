@@ -108,7 +108,7 @@ public final class QueleaVelocity {
         proxy.getEventManager().register(this,
                 new PresenceListener(gateway, executor, config.proxyId(), failures, logger));
 
-        PartyActions actions = new PartyActions(gateway, executor, messages, failures, logger);
+        PartyActions actions = new PartyActions(gateway, executor, messages, failures, logger, Clock.systemUTC());
         PartyCommands commands = new PartyCommands(actions, localPlayers, localPlayers::wrap, messages);
         registerCommand(commands.party(), "p");
         registerCommand(commands.chat());

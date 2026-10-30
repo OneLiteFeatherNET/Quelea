@@ -12,7 +12,15 @@ import java.util.concurrent.CompletableFuture;
  */
 public interface LocalPlayer {
 
+    /** The Velocity permission a leader needs to open a party to everyone. Closing needs none. */
+    String PUBLIC_PARTY_PERMISSION = "quelea.party.public";
+
     UUID id();
+
+    /**
+     * @return whether the player holds the Velocity permission {@code permission}
+     */
+    boolean hasPermission(String permission);
 
     String name();
 

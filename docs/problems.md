@@ -136,6 +136,48 @@ Common fields: `type`, `title`, `status`, `detail`, `instance` (the request path
   not run. The state was not changed.
 - **What to do:** retry after a short delay. The request is safe to repeat.
 
+## party-not-public
+
+- **Status:** 409
+- **When:** a player joins a party directly, but the party is private. Only a public party admits a
+  player without a request.
+- **What to do:** ask to join with a join request instead; the leader then answers it.
+
+## party-banned
+
+- **Status:** 403
+- **When:** a player who was kicked from the party joins it or asks to join it. The ban lasts while the
+  party exists; an invite from the leader lifts it.
+- **What to do:** the player must wait for an invite from the party's leader.
+
+## target-not-in-party
+
+- **Status:** 404
+- **When:** a player asks to join, or to request, the party of a target who is online but in no party.
+- **What to do:** ask the target to create a party first, or invite the player to the target.
+
+## join-request-pending
+
+- **Status:** 409
+- **When:** the player already has an open join request to that party, which is still waiting for the
+  leader's answer or for its expiry (`QUELEA_JOIN_REQUEST_TTL`, default 60 seconds).
+- **What to do:** wait for the leader's answer. Do not repeat the request.
+
+## join-request-cooldown
+
+- **Status:** 429, with a `Retry-After` header of the whole seconds left
+- **When:** the player's last request to that party was denied, or expired unanswered, less than
+  `QUELEA_JOIN_REQUEST_COOLDOWN` ago (default 60 seconds). The cooldown starts at the denial, or at the
+  expiry of the request.
+- **What to do:** wait for `Retry-After` seconds, then ask again. Clients must not report this as a fault.
+
+## join-request-not-found
+
+- **Status:** 404
+- **When:** the leader accepts or rejects a request that is not open: the player never asked, or the
+  request has expired.
+- **What to do:** the leader must not act on it again. The player may ask again once the cooldown is over.
+
 ## internal-error
 
 - **Status:** 500

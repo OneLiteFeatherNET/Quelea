@@ -11,7 +11,9 @@ public enum PartyEventType {
     DISBANDED("party.disbanded"),
     EXPIRING("party.expiring"),
     WARP("party.warp"),
-    CHAT("party.chat");
+    CHAT("party.chat"),
+    JOIN_REQUESTED("party.join-requested"),
+    JOIN_REQUEST_ANSWERED("party.join-request-answered");
 
     private final String wireName;
 
