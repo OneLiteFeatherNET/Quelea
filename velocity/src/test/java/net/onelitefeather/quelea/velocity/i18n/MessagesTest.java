@@ -32,7 +32,8 @@ class MessagesTest {
             "validation-failed", "not-found", "method-not-allowed", "unsupported-media-type", "unauthorized", "forbidden",
             "precondition-failed", "idempotency-key-reused", "request-in-progress", "party-not-found", "not-in-party",
             "already-in-party", "not-leader", "not-member", "party-full", "player-not-online", "invite-not-found",
-            "cannot-target-self", "lock-timeout", "internal-error");
+            "cannot-target-self", "lock-timeout", "internal-error", "party-not-public", "party-banned",
+            "target-not-in-party", "join-request-pending", "join-request-cooldown", "join-request-not-found");
 
     private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(MessagesTest.class);
 

@@ -14,6 +14,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -151,6 +152,42 @@ public final class HttpQueleaGateway implements QueleaGateway {
     }
 
     @Override
+    public Party setPublic(String partyId, String actorId, boolean open) {
+        JsonObject body = new JsonObject();
+        body.addProperty("actorId", actorId);
+        body.addProperty("public", open);
+        return decode(call("POST", partyRoute(partyId) + "/public", body), QueleaJson::party);
+    }
+
+    @Override
+    public Party join(String playerId, String targetName) {
+        return decode(call("POST", "/v1/players/" + encode(playerId) + "/party/join", targetBody(targetName)),
+                QueleaJson::party);
+    }
+
+    /** 201 is an open request to a private party; 200 is a direct join into a public one. */
+    @Override
+    public JoinResult request(String playerId, String targetName) {
+        HttpResponse<String> response = call("POST", "/v1/players/" + encode(playerId) + "/party/requests",
+                targetBody(targetName));
+        if (response.statusCode() == 201) {
+            return new JoinResult.Sent(decode(response, json -> Instant.parse(QueleaJson.optionalString(json, "expiresAt"))));
+        }
+        return new JoinResult.Joined(decode(response, QueleaJson::party));
+    }
+
+    @Override
+    public Party acceptRequest(String partyId, String actorId, String requesterName) {
+        return decode(call("POST", partyRoute(partyId) + "/join-requests/accept", answerBody(actorId, requesterName)),
+                QueleaJson::party);
+    }
+
+    @Override
+    public void rejectRequest(String partyId, String actorId, String requesterName) {
+        call("POST", partyRoute(partyId) + "/join-requests/reject", answerBody(actorId, requesterName));
+    }
+
+    @Override
     public void snapshot(String proxyId, List<PlayerRef> players) {
         JsonArray array = new JsonArray();
         for (PlayerRef player : players) {
@@ -248,7 +285,8 @@ public final class HttpQueleaGateway implements QueleaGateway {
                 return new QueleaUnavailableException("party service is still processing this request");
             }
             if (code != null) {
-                return new QueleaProblemException(code, status, QueleaJson.optionalString(problem, "detail"));
+                return new QueleaProblemException(code, status, QueleaJson.optionalString(problem, "detail"),
+                        retryAfterSeconds(response));
             }
         } catch (RuntimeException ignored) {
             // Not a problem document: handled below as unavailable.
@@ -271,6 +309,32 @@ public final class HttpQueleaGateway implements QueleaGateway {
         } catch (RuntimeException e) {
             throw new QueleaUnavailableException("unexpected response from the party service", e);
         }
+    }
+
+    /** The whole seconds of a {@code Retry-After} header, or {@code null} when it is absent or not a number. */
+    private static Long retryAfterSeconds(HttpResponse<String> response) {
+        return response.headers().firstValue("Retry-After")
+                .map(value -> {
+                    try {
+                        return Long.parseLong(value.trim());
+                    } catch (NumberFormatException e) {
+                        return null;
+                    }
+                })
+                .orElse(null);
+    }
+
+    private static JsonObject targetBody(String targetName) {
+        JsonObject body = new JsonObject();
+        body.addProperty("targetName", targetName);
+        return body;
+    }
+
+    private static JsonObject answerBody(String actorId, String requesterName) {
+        JsonObject body = new JsonObject();
+        body.addProperty("actorId", actorId);
+        body.addProperty("requesterName", requesterName);
+        return body;
     }
 
     private static JsonObject actorTarget(String actorId, String targetId) {

@@ -1,5 +1,6 @@
 package net.onelitefeather.quelea.velocity.event;
 
+import com.google.gson.JsonObject;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -58,6 +59,8 @@ public final class EventHandler {
             case "party.expiring" -> expiring(event);
             case "party.warp" -> warp(event);
             case "party.chat" -> chat(event);
+            case "party.join-requested" -> joinRequested(event);
+            case "party.join-request-answered" -> joinRequestAnswered(event);
             default -> {
                 // Unknown types are ignored on purpose: the service may add events before the plugin knows them.
             }
@@ -150,6 +153,72 @@ public final class EventHandler {
                 sendTo(member.id(), "party.leader-changed", Placeholder.unparsed("player", leaderName(event)));
             }
         }
+        closedNotice(event);
+    }
+
+    /**
+     * A change of leader that cleared the open flag ({@code wasPublic}) tells the new leader that the party is private
+     * again. The reopen hint is shown only to a leader who holds the permission to open it.
+     */
+    private void closedNotice(PartyEvent event) {
+        JsonObject payload = event.payload();
+        if (!payload.has("wasPublic") || !payload.get("wasPublic").getAsBoolean()) {
+            return;
+        }
+        UUID leader = uuid(event.leaderId());
+        if (leader == null) {
+            return;
+        }
+        players.find(leader).ifPresent(player -> {
+            String key = player.hasPermission(LocalPlayer.PUBLIC_PARTY_PERMISSION)
+                    ? "party.public-closed.reopen" : "party.public-closed";
+            player.send(messages.message(player.locale(), key));
+        });
+    }
+
+    /**
+     * The leader's prompt for a join request. The two buttons run the answer commands with the requester's name, which
+     * the service resolves.
+     */
+    private void joinRequested(PartyEvent event) {
+        String requesterName = event.field("requesterName");
+        UUID leader = uuid(event.leaderId());
+        if (leader == null || requesterName == null) {
+            return;
+        }
+        players.find(leader).ifPresent(player -> {
+            TagResolver requester = Placeholder.unparsed("requester", requesterName);
+            Component accept = messages.line(player.locale(), "party.join-request.accept")
+                    .clickEvent(ClickEvent.runCommand("/party approve " + requesterName))
+                    .hoverEvent(HoverEvent.showText(
+                            messages.line(player.locale(), "party.join-request.accept.hover", requester)));
+            Component deny = messages.line(player.locale(), "party.join-request.deny")
+                    .clickEvent(ClickEvent.runCommand("/party reject " + requesterName))
+                    .hoverEvent(HoverEvent.showText(
+                            messages.line(player.locale(), "party.join-request.deny.hover", requester)));
+            player.send(messages.message(player.locale(), "party.join-request", requester)
+                    .append(Component.space())
+                    .append(accept)
+                    .append(Component.space())
+                    .append(deny));
+        });
+    }
+
+    /**
+     * Tells the requester, if local, how the leader answered. The requester is the joining player of an accepted
+     * request, so the party.joined of that join skips them: this line is the only one they get.
+     */
+    private void joinRequestAnswered(PartyEvent event) {
+        String outcome = event.field("outcome");
+        String key;
+        if ("accepted".equals(outcome)) {
+            key = "party.join-request.accepted";
+        } else if ("denied".equals(outcome)) {
+            key = "party.join-request.denied";
+        } else {
+            return;
+        }
+        sendTo(event.field("requesterId"), key);
     }
 
     private void disbanded(PartyEvent event) {

@@ -167,6 +167,31 @@ class PresenceListenerTest {
         }
 
         @Override
+        public Party setPublic(String partyId, String actorId, boolean open) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Party join(String playerId, String targetName) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public net.onelitefeather.quelea.velocity.http.JoinResult request(String playerId, String targetName) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Party acceptRequest(String partyId, String actorId, String requesterName) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void rejectRequest(String partyId, String actorId, String requesterName) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public void snapshot(String proxyId, List<PlayerRef> players) {
             throw new UnsupportedOperationException();
         }

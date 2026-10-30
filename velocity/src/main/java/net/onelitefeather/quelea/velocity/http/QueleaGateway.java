@@ -40,6 +40,26 @@ public interface QueleaGateway {
 
     void chat(String partyId, String actorId, String message);
 
+    /**
+     * Opens ({@code open = true}) or closes the leader's party to everyone.
+     */
+    Party setPublic(String partyId, String actorId, boolean open);
+
+    /**
+     * Joins the party of {@code targetName} directly; the service refuses it unless the party is public.
+     */
+    Party join(String playerId, String targetName);
+
+    /**
+     * Asks the party of {@code targetName} to let the player in: a public party admits them at once, a private one
+     * holds the request for its leader.
+     */
+    JoinResult request(String playerId, String targetName);
+
+    Party acceptRequest(String partyId, String actorId, String requesterName);
+
+    void rejectRequest(String partyId, String actorId, String requesterName);
+
     void snapshot(String proxyId, List<PlayerRef> players);
 
     void login(String proxyId, String playerId, String name);

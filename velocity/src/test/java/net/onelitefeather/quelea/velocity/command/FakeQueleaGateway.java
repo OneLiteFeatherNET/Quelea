@@ -1,6 +1,7 @@
 package net.onelitefeather.quelea.velocity.command;
 
 import net.onelitefeather.quelea.velocity.http.Invite;
+import net.onelitefeather.quelea.velocity.http.JoinResult;
 import net.onelitefeather.quelea.velocity.http.Party;
 import net.onelitefeather.quelea.velocity.http.PlayerRef;
 import net.onelitefeather.quelea.velocity.http.QueleaGateway;
@@ -102,6 +103,59 @@ final class FakeQueleaGateway implements QueleaGateway {
     @Override
     public void chat(String partyId, String actorId, String message) {
         throw new UnsupportedOperationException();
+    }
+
+    /** The service calls that changed the public flag: {@code "on"} or {@code "off"}, in order. */
+    final List<String> publicCalls = new ArrayList<>();
+    /** Names passed to {@code join}, in order. */
+    final List<String> joins = new ArrayList<>();
+    /** Names passed to {@code request}, in order. */
+    final List<String> requests = new ArrayList<>();
+    /** {@code accept:<name>} and {@code reject:<name>} for each answer, in order. */
+    final List<String> answers = new ArrayList<>();
+    private JoinResult requestResult;
+
+    FakeQueleaGateway withRequestResult(JoinResult result) {
+        this.requestResult = result;
+        return this;
+    }
+
+    @Override
+    public Party setPublic(String partyId, String actorId, boolean open) {
+        if (failure != null) {
+            throw failure;
+        }
+        publicCalls.add(open ? "on" : "off");
+        return parties.stream().filter(party -> party.id().equals(partyId)).findFirst().orElseThrow();
+    }
+
+    @Override
+    public Party join(String playerId, String targetName) {
+        if (failure != null) {
+            throw failure;
+        }
+        joins.add(targetName);
+        return parties.get(0);
+    }
+
+    @Override
+    public JoinResult request(String playerId, String targetName) {
+        if (failure != null) {
+            throw failure;
+        }
+        requests.add(targetName);
+        return requestResult;
+    }
+
+    @Override
+    public Party acceptRequest(String partyId, String actorId, String requesterName) {
+        answers.add("accept:" + requesterName);
+        return parties.stream().filter(party -> party.id().equals(partyId)).findFirst().orElseThrow();
+    }
+
+    @Override
+    public void rejectRequest(String partyId, String actorId, String requesterName) {
+        answers.add("reject:" + requesterName);
     }
 
     @Override
