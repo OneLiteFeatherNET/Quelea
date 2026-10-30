@@ -22,7 +22,7 @@ flowchart LR
 
 Events are delivered at most once. A proxy that reconnects does not receive events it missed, so a warp that was lost can be repeated with `/party warp`.
 
-**Lonely parties.** A party that still has only its creator after `QUELEA_PARTY_ALONE_TIMEOUT` is disbanded. `QUELEA_PARTY_ALONE_WARNING` before that, the service publishes `party.expiring` with the expiry time, and the proxy tells the leader how many minutes are left. Expired parties are disbanded with the reason `expired-alone`. Every `party.disbanded` event carries a `reason`: `leader` (the leader disbanded), `last-member-left` (only one member remained) or `expired-alone`. Clients must treat an unknown reason like `leader`.
+**Lonely parties.** A party that has only one member after `QUELEA_PARTY_ALONE_TIMEOUT` is disbanded. The timeout counts from the creation or from the leave or kick that left that one member, and a join ends it. A leave or kick that leaves one member keeps the party open. `QUELEA_PARTY_ALONE_WARNING` before that, the service publishes `party.expiring` with the expiry time, and the proxy tells the leader how many minutes are left. Expired parties are disbanded with the reason `expired-alone`. Every `party.disbanded` event carries a `reason`: `leader` (the leader disbanded), `last-member-left` (no member remained) or `expired-alone`. Clients must treat an unknown reason like `leader`.
 
 **Party versions and conditional requests.** Every party has a `version`: 1 when it is created, +1 with every change. It is in the party JSON and in every event. `GET /v1/parties/{id}` and `GET /v1/players/{id}/party` send it as a strong `ETag` (for example `"4"`) and answer `304 Not Modified` without a body when `If-None-Match` names the current tag. `kick`, `promote`, `disband` and `warp` accept `If-Match` with one or more strong tags or `*`. If none matches the current version, the command changes nothing and answers `412 precondition-failed`. A weak tag (`W/`) never matches. Without the header the command runs unconditionally.
 
@@ -87,7 +87,7 @@ Set these on the service. Defaults are in `backend/src/main/resources/applicatio
 | `QUELEA_REDIS_LOCK_WAIT`       | `1s`                        | How long a request waits for a busy party lock before it fails with `lock-timeout`. |
 | `QUELEA_PARTY_MAX_SIZE`        | `8`                         | Maximum members per party, counting the leader. Minimum 2.                    |
 | `QUELEA_INVITE_TTL`            | `60s`                       | How long an invite stays valid. Re-inviting refreshes it.                     |
-| `QUELEA_PARTY_ALONE_TIMEOUT`   | `30m`                       | A party that has only its creator for this long is disbanded with reason `expired-alone`. |
+| `QUELEA_PARTY_ALONE_TIMEOUT`   | `30m`                       | A party that has only one member for this long is disbanded with reason `expired-alone`. |
 | `QUELEA_PARTY_ALONE_WARNING`   | `5m`                        | `party.expiring` is published this long before the expiry. `0s` disables the warning. |
 | `QUELEA_PARTY_EXPIRY_INTERVAL` | `15s`                       | How often the expiry job runs; one replica per run, under a lock. The expiry can be this late. |
 | `QUELEA_PROXY_TIMEOUT`         | `45s`                       | A proxy without a heartbeat for this long is treated as dead; its players are disconnected from their parties. |

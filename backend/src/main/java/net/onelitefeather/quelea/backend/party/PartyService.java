@@ -66,7 +66,7 @@ public class PartyService {
             throw new PartyException(PartyProblem.ALREADY_IN_PARTY, "The player is already in a party.");
         }
         Instant now = clock.instant();
-        Party party = new Party(partyId, leaderId, List.of(new Member(leaderId, leader.name(), now)), now, 1);
+        Party party = new Party(partyId, leaderId, List.of(new Member(leaderId, leader.name(), now)), now, 1, now);
         parties.save(party);
         markAlone(party);
         statistics.created();
@@ -254,7 +254,7 @@ public class PartyService {
             if (party == null || party.members().size() != 1) {
                 return null;
             }
-            publish(PartyEventType.EXPIRING, party, Map.of("expiresAt", party.createdAt().plus(settings.getAloneTimeout())));
+            publish(PartyEventType.EXPIRING, party, Map.of("expiresAt", party.aloneStart().plus(settings.getAloneTimeout())));
             return null;
         });
     }
@@ -292,8 +292,9 @@ public class PartyService {
     }
 
     /**
-     * Removes {@code gone} (after LEFT or KICKED), then either disbands a party of at most one member or hands
-     * leadership to the longest-standing remaining member. Returns the party state after the change.
+     * Removes {@code gone} (after LEFT or KICKED). A party left with no member is disbanded; a party left with one
+     * member stays open and starts a new alone period at this moment; a larger party keeps its members. Leadership
+     * passes to the longest-standing remaining member when the leader left. Returns the party state after the change.
      */
     private Party removeMember(Party party, Member gone, PartyEventType type, Map<String, Object> payload) {
         List<Member> remaining = party.members().stream()
@@ -307,14 +308,19 @@ public class PartyService {
                     .map(Member::id)
                     .orElseThrow();
         }
-        Party after = new Party(party.id(), leaderId, remaining, party.createdAt(), party.version() + 1);
-        if (remaining.size() <= 1) {
+        if (remaining.isEmpty()) {
             // Two changes in a row: the departure, then the disband. Each event carries its own version.
+            Party empty = new Party(party.id(), leaderId, remaining, party.createdAt(), party.version() + 1, null);
             publish(type, party.id(), leaderId, remaining, party.version() + 1, payload);
             disbandParty(party, REASON_LAST_MEMBER_LEFT, remaining, party.version() + 2);
-            return after;
+            return empty;
         }
+        Instant aloneSince = remaining.size() == 1 ? clock.instant() : null;
+        Party after = new Party(party.id(), leaderId, remaining, party.createdAt(), party.version() + 1, aloneSince);
         parties.save(after);
+        if (aloneSince != null) {
+            markAlone(after);
+        }
         publish(type, after, payload);
         if (!leaderId.equals(party.leaderId())) {
             publish(PartyEventType.LEADER_CHANGED, after,
@@ -346,9 +352,12 @@ public class PartyService {
                 Map.of("formerMembers", formerMembers, "reason", reason));
     }
 
-    /** A party of one member expires after the alone timeout and is warned before, unless the warning is off. */
+    /**
+     * A party of one member expires after the alone timeout, counted from the start of its alone period, and is warned
+     * before, unless the warning is off.
+     */
     private void markAlone(Party party) {
-        Instant expireAt = party.createdAt().plus(settings.getAloneTimeout());
+        Instant expireAt = party.aloneStart().plus(settings.getAloneTimeout());
         Duration warning = settings.getAloneWarning();
         Instant warnAt = warning.isZero() || warning.isNegative() ? null : expireAt.minus(warning);
         parties.markAlone(party.id(), expireAt, warnAt);

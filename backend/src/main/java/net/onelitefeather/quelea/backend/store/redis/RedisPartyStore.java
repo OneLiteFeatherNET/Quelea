@@ -124,6 +124,9 @@ public class RedisPartyStore implements PartyStore {
         commands.zadd(keys.aloneExpire(), (double) expireAt.toEpochMilli(), partyId.toString());
         if (warnAt != null) {
             commands.zadd(keys.aloneWarn(), (double) warnAt.toEpochMilli(), partyId.toString());
+        } else {
+            // A restarted alone period without warning must not keep the warning of the one before.
+            commands.zrem(keys.aloneWarn(), partyId.toString());
         }
     }
 

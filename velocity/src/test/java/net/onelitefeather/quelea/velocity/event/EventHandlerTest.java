@@ -2,6 +2,7 @@ package net.onelitefeather.quelea.velocity.event;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.onelitefeather.quelea.velocity.follow.FollowMode;
 import net.onelitefeather.quelea.velocity.follow.FollowPolicy;
@@ -331,6 +332,50 @@ class EventHandlerTest {
 
         assertTrue(lobbyFollower.sent().isEmpty(), "the leaver reads only the command answer");
         assertEquals(1, leader.sent().size(), "the remaining member is told");
+    }
+
+    @Test
+    void leaveLeavingOneMemberTellsTheRemainingMemberThatThePartyStaysOpen() {
+        PartyEvent left = event("party.left", LEADER.toString(), member(LEADER, "Alice"), """
+                {"playerId":"%s","playerName":"Bob"}""".formatted(FOLLOWER_IN_LOBBY));
+
+        handler().handle(left);
+
+        assertEquals(List.of(plain(aloneMessage("Bob"))), sentTexts(leader),
+                "the single remaining member must get the party.left.alone message, and only that");
+    }
+
+    @Test
+    void kickLeavingOneMemberTellsTheRemainingLeaderThatThePartyStaysOpen() {
+        PartyEvent kicked = event("party.kicked", LEADER.toString(), member(LEADER, "Alice"), """
+                {"playerId":"%s","playerName":"Bob"}""".formatted(FOLLOWER_IN_LOBBY));
+
+        handler().handle(kicked);
+
+        assertEquals(List.of(plain(aloneMessage("Bob"))), sentTexts(leader),
+                "the leader who kicked, left alone, is told the party stays open; the command answer does not say it");
+        assertEquals(1, lobbyFollower.sent().size(), "the kicked player is told");
+    }
+
+    @Test
+    void leaveWithTwoRemainingKeepsTheGenericLeftMessage() {
+        PartyEvent left = event("party.left", LEADER.toString(), """
+                %s,%s""".formatted(member(LEADER, "Alice"), member(FOLLOWER_IN_GAME, "Carol")), """
+                {"playerId":"%s","playerName":"Bob"}""".formatted(FOLLOWER_IN_LOBBY));
+
+        handler().handle(left);
+
+        String generic = plain(messages.message(Locale.ENGLISH, "party.left", Placeholder.unparsed("player", "Bob")));
+        assertEquals(List.of(generic), sentTexts(leader), "the leader must get the generic party.left message");
+        assertEquals(List.of(generic), sentTexts(gameFollower), "the other member must get the generic party.left message");
+    }
+
+    private Component aloneMessage(String player) {
+        return messages.message(Locale.ENGLISH, "party.left.alone", Placeholder.unparsed("player", player));
+    }
+
+    private static List<String> sentTexts(FakeLocalPlayer player) {
+        return player.sent().stream().map(EventHandlerTest::plain).toList();
     }
 
     @Test

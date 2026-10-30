@@ -335,7 +335,7 @@ class PartyServiceTest {
     }
 
     @Test
-    void lastPartnerLeavingDisbandsPartyAndReleasesRemainingMember() {
+    void partnerLeavingKeepsThePartyOpenWithTheRemainingMember() {
         PartyFixture f = new PartyFixture();
         UUID alpha = f.online("Alpha");
         UUID bravo = f.online("Bravo");
@@ -345,22 +345,23 @@ class PartyServiceTest {
 
         f.partyService.leave(bravo, "leave");
 
-        assertProblem(PartyProblem.NOT_IN_PARTY, () -> f.partyService.partyOf(alpha));
-        assertProblem(PartyProblem.PARTY_NOT_FOUND, () -> f.partyService.get(party.id()));
-        assertEquals("party.disbanded", lastEventType(f), "the party must be disbanded when one member remains");
+        assertEquals(party.id(), f.partyService.partyOf(alpha).id(), "the party must keep its id and the remaining member");
+        assertEquals(List.of(alpha), f.partyService.get(party.id()).members().stream().map(Member::id).toList(),
+                "the remaining member must be the only member");
+        assertFalse(f.events.types().contains("party.disbanded"), "a departure that leaves one member must not disband the party");
     }
 
     @Test
-    void lastPartnerLeavingCarriesReasonLastMemberLeft() {
+    void soloPartyLeavingDisbandsWithReasonLastMemberLeft() {
         PartyFixture f = new PartyFixture();
         UUID alpha = f.online("Alpha");
-        UUID bravo = f.online("Bravo");
-        Party party = join(f, alpha, "Bravo");
+        Party party = f.partyService.create(alpha);
 
-        f.partyService.leave(bravo, "leave");
+        f.partyService.leave(alpha, "leave");
 
+        assertProblem(PartyProblem.PARTY_NOT_FOUND, () -> f.partyService.get(party.id()));
         assertEquals("last-member-left", lastEvent(f, "party.disbanded").payload().get("reason"),
-                "a party that drops to one member must be disbanded with reason last-member-left, whatever the leave reason");
+                "a party that loses its last member must be disbanded with reason last-member-left");
     }
 
     @Test
@@ -449,7 +450,7 @@ class PartyServiceTest {
     }
 
     @Test
-    void kickOfLastOtherMemberDisbandsParty() {
+    void kickOfLastOtherMemberKeepsThePartyOpen() {
         PartyFixture f = new PartyFixture();
         UUID alpha = f.online("Alpha");
         UUID bravo = f.online("Bravo");
@@ -457,9 +458,10 @@ class PartyServiceTest {
 
         f.partyService.kick(party.id(), alpha, bravo);
 
-        assertProblem(PartyProblem.PARTY_NOT_FOUND, () -> f.partyService.get(party.id()));
-        assertProblem(PartyProblem.NOT_IN_PARTY, () -> f.partyService.partyOf(alpha));
-        assertEquals("party.disbanded", lastEventType(f), "a party of one must be disbanded");
+        assertEquals(party.id(), f.partyService.partyOf(alpha).id(), "the kick must keep the party with its remaining member");
+        assertEquals(List.of(alpha), f.partyService.get(party.id()).members().stream().map(Member::id).toList(),
+                "the leader must be the only member");
+        assertEquals("party.kicked", lastEventType(f), "the kick must be published, and no disband follows it");
     }
 
     @Test

@@ -42,13 +42,10 @@ class PartyStatisticsTest {
     void lastMemberLeavingCountsReasonLastMemberLeftWithLifetime() {
         PartyFixture f = new PartyFixture();
         UUID leader = f.online("Alpha");
-        UUID bravo = f.online("Bravo");
         f.partyService.create(leader);
-        Invite invite = f.partyService.invite(leader, "Bravo");
-        f.partyService.accept(bravo, invite.partyId());
         f.clock.advance(Duration.ofMinutes(10));
 
-        f.partyService.leave(bravo, "quit");
+        f.partyService.leave(leader, "quit");
 
         assertEquals(1.0, disbanded(f.meters, "last-member-left"), "the party must count reason last-member-left");
         assertEquals(10.0, lifetime(f.meters, "last-member-left").totalTime(TimeUnit.MINUTES), 0.001,
