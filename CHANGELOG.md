@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/OneLiteFeatherNET/Quelea/compare/v0.4.0...v0.5.0) (2026-10-30)
+
+
+### Features
+
+* **party:** let players ask to join and open parties to everyone ([#29](https://github.com/OneLiteFeatherNET/Quelea/issues/29)) ([7bde4c3](https://github.com/OneLiteFeatherNET/Quelea/commit/7bde4c3abc55d976d04b23a71459c2131a37dedb))
+
+
+### Bug Fixes
+
+* **party:** keep a party alive after its other members leave ([#27](https://github.com/OneLiteFeatherNET/Quelea/issues/27)) ([9e8ae8f](https://github.com/OneLiteFeatherNET/Quelea/commit/9e8ae8f29b2635733c8b56265a69ed03978548ee))
+
 ## [0.4.0](https://github.com/OneLiteFeatherNET/Quelea/compare/v0.3.0...v0.4.0) (2026-10-30)
 
 
