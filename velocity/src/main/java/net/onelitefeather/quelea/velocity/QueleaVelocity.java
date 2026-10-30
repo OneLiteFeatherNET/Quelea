@@ -1,6 +1,7 @@
 package net.onelitefeather.quelea.velocity;
 
 import com.google.inject.Inject;
+import io.sentry.Sentry;
 import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.event.Subscribe;
@@ -14,6 +15,11 @@ import net.onelitefeather.quelea.velocity.auth.JdkTokenTransport;
 import net.onelitefeather.quelea.velocity.command.PartyActions;
 import net.onelitefeather.quelea.velocity.command.PartyCommands;
 import net.onelitefeather.quelea.velocity.config.QueleaConfig;
+import net.onelitefeather.quelea.velocity.error.ErrorReporter;
+import net.onelitefeather.quelea.velocity.error.ErrorReporters;
+import net.onelitefeather.quelea.velocity.error.FailureReports;
+import net.onelitefeather.quelea.velocity.error.NoopErrorReporter;
+import net.onelitefeather.quelea.velocity.error.OutageReporter;
 import net.onelitefeather.quelea.velocity.event.EventHandler;
 import net.onelitefeather.quelea.velocity.event.PartyEvent;
 import net.onelitefeather.quelea.velocity.follow.FollowPolicy;
@@ -29,6 +35,7 @@ import net.onelitefeather.quelea.velocity.player.VelocityLocalPlayers;
 import net.onelitefeather.quelea.velocity.stream.Backoff;
 import net.onelitefeather.quelea.velocity.stream.EventStream;
 import net.onelitefeather.quelea.velocity.stream.Sleeper;
+import net.onelitefeather.quelea.velocity.stream.SseMessage;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -57,6 +64,7 @@ public final class QueleaVelocity {
     private HttpClient httpClient;
     private EventStream eventStream;
     private ScheduledTask heartbeat;
+    private ErrorReporter errors = new NoopErrorReporter();
 
     @Inject
     public QueleaVelocity(ProxyServer proxy, Logger logger, @DataDirectory Path dataDirectory) {
@@ -84,17 +92,23 @@ public final class QueleaVelocity {
                     + "party service accepts this plugin", config.credentials().missing());
         }
 
+        errors = ErrorReporters.start(config.sentryDsn(), config.sentryEnvironment(), "quelea@" + version(),
+                config.proxyId(), options -> Sentry.init(options), logger);
+
         executor = Executors.newVirtualThreadPerTaskExecutor();
         httpClient = HttpQueleaGateway.newClient();
         QueleaGateway gateway = new HttpQueleaGateway(config.url(), httpClient, tokens);
         Messages messages = Messages.load(dataDirectory.resolve("lang"), logger);
+        FailureReports failures = new FailureReports(errors, messages, config.proxyId());
+        OutageReporter outage = new OutageReporter(errors, Clock.systemUTC(), OutageReporter.THRESHOLD,
+                config.proxyId());
         FollowPolicy follow = FollowPolicy.of(config.lobbyPattern(), config.followMode());
         VelocityLocalPlayers localPlayers = new VelocityLocalPlayers(proxy);
 
         proxy.getEventManager().register(this,
-                new PresenceListener(gateway, executor, config.proxyId(), logger));
+                new PresenceListener(gateway, executor, config.proxyId(), failures, logger));
 
-        PartyActions actions = new PartyActions(gateway, executor, messages, logger);
+        PartyActions actions = new PartyActions(gateway, executor, messages, failures, logger);
         PartyCommands commands = new PartyCommands(actions, localPlayers, localPlayers::wrap, messages);
         registerCommand(commands.party(), "p");
         registerCommand(commands.chat());
@@ -104,15 +118,19 @@ public final class QueleaVelocity {
                 httpClient,
                 HttpQueleaGateway.eventsUri(config.url(), config.proxyId()),
                 tokens,
-                () -> gateway.snapshot(config.proxyId(), snapshot(localPlayers)),
-                message -> handler.handle(PartyEvent.parse(message.data())),
+                () -> {
+                    gateway.snapshot(config.proxyId(), snapshot(localPlayers));
+                    outage.connected();
+                },
+                outage::disconnected,
+                message -> handleEvent(handler, failures, message),
                 new Backoff(Duration.ofSeconds(1), Duration.ofSeconds(30)),
                 Sleeper.SYSTEM,
                 logger);
         eventStream.start();
 
         heartbeat = proxy.getScheduler()
-                .buildTask(this, () -> executor.execute(() -> sendHeartbeat(gateway, config.proxyId())))
+                .buildTask(this, () -> executor.execute(() -> sendHeartbeat(gateway, failures, config.proxyId())))
                 .repeat(HEARTBEAT_INTERVAL)
                 .schedule();
 
@@ -130,6 +148,23 @@ public final class QueleaVelocity {
         if (executor != null) {
             executor.shutdownNow();
         }
+        errors.close();
+    }
+
+    private String version() {
+        return proxy.getPluginManager().fromInstance(this)
+                .flatMap(container -> container.getDescription().getVersion())
+                .orElse("unknown");
+    }
+
+    /** One event; a failure in it is reported and logged, and the stream goes on. */
+    private void handleEvent(EventHandler handler, FailureReports failures, SseMessage message) {
+        try {
+            handler.handle(PartyEvent.parse(message.data()));
+        } catch (RuntimeException e) {
+            logger.error("Could not handle event {}", message.id(), e);
+            failures.failure(e, null);
+        }
     }
 
     private void registerCommand(BrigadierCommand command, String... aliases) {
@@ -143,11 +178,12 @@ public final class QueleaVelocity {
                 .toList();
     }
 
-    private void sendHeartbeat(QueleaGateway gateway, String proxyId) {
+    private void sendHeartbeat(QueleaGateway gateway, FailureReports failures, String proxyId) {
         try {
             gateway.heartbeat(proxyId);
         } catch (QueleaProblemException | QueleaUnavailableException e) {
             logger.warn("Heartbeat failed: {}", e.getMessage());
+            failures.failure(e, null);
         }
     }
 }

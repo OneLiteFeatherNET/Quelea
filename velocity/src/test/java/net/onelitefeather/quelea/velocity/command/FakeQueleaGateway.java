@@ -16,7 +16,14 @@ final class FakeQueleaGateway implements QueleaGateway {
 
     private final List<Invite> invites = new ArrayList<>();
     private final List<Party> parties = new ArrayList<>();
+    private RuntimeException failure;
     final List<String> accepted = new ArrayList<>();
+
+    /** Every invite and invite-list call fails with this exception. */
+    FakeQueleaGateway failingWith(RuntimeException failure) {
+        this.failure = failure;
+        return this;
+    }
 
     FakeQueleaGateway withInvite(Invite invite) {
         invites.add(invite);
@@ -42,11 +49,17 @@ final class FakeQueleaGateway implements QueleaGateway {
 
     @Override
     public Invite invite(String actorId, String targetName) {
+        if (failure != null) {
+            throw failure;
+        }
         throw new UnsupportedOperationException();
     }
 
     @Override
     public List<Invite> invites(String playerId) {
+        if (failure != null) {
+            throw failure;
+        }
         return invites.stream().filter(invite -> invite.targetId().equals(playerId)).toList();
     }
 

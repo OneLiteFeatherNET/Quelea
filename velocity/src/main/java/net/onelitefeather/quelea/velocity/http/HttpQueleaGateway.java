@@ -253,7 +253,8 @@ public final class HttpQueleaGateway implements QueleaGateway {
         } catch (RuntimeException ignored) {
             // Not a problem document: handled below as unavailable.
         }
-        return new QueleaUnavailableException("party service answered HTTP " + status + " without a problem document");
+        return new QueleaUnavailableException("party service answered HTTP " + status + " without a problem document",
+                status);
     }
 
     private static <T> T decode(HttpResponse<String> response, Function<JsonObject, T> mapper) {

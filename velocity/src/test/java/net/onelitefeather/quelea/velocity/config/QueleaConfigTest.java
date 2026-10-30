@@ -14,6 +14,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -38,6 +39,36 @@ class QueleaConfigTest {
         assertEquals("http://localhost:8080", config.url());
         assertEquals("(?i)^lobby.*", config.lobbyPattern());
         assertEquals(FollowMode.LOBBY, config.followMode());
+    }
+
+    @Test
+    void sentryIsOffWithoutADsnAndTheEnvironmentDefaultsToProduction() throws IOException {
+        QueleaConfig config = QueleaConfig.load(file(), name -> null);
+
+        assertNull(config.sentryDsn(), "no DSN means no error reporting");
+        assertEquals("production", config.sentryEnvironment());
+    }
+
+    @Test
+    void sentryKeysAreReadFromTheEnvironmentBeforeTheFile() throws IOException {
+        writeFile("sentry-dsn=https://from-file@sentry.example/1\nsentry-environment=dev\n");
+
+        QueleaConfig config = QueleaConfig.load(file(), Map.of(
+                "QUELEA_SENTRY_DSN", "https://from-env@sentry.example/2",
+                "QUELEA_SENTRY_ENVIRONMENT", "staging")::get);
+
+        assertEquals("https://from-env@sentry.example/2", config.sentryDsn());
+        assertEquals("staging", config.sentryEnvironment());
+    }
+
+    @Test
+    void sentryKeysAreReadFromTheFileWhenTheEnvironmentIsSilent() throws IOException {
+        writeFile("sentry-dsn=https://from-file@sentry.example/1\nsentry-environment=dev\n");
+
+        QueleaConfig config = QueleaConfig.load(file(), name -> null);
+
+        assertEquals("https://from-file@sentry.example/1", config.sentryDsn());
+        assertEquals("dev", config.sentryEnvironment());
     }
 
     @Test

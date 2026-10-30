@@ -122,6 +122,10 @@ On the first start the plugin creates this file with commented defaults. Each va
 | `client-id`     | `QUELEA_CLIENT_ID`    | none                      | Client id of the plugin's app registration.                              |
 | `client-secret` | `QUELEA_CLIENT_SECRET`| none                      | Secret of that app registration. Prefer the environment for it.          |
 | `auth-scope`    | `QUELEA_AUTH_SCOPE`   | none                      | Token scope, `api://<client id of the Quelea API>/.default`.             |
+| `sentry-dsn`    | `QUELEA_SENTRY_DSN`   | none (off)                | Sentry DSN for error reports. Blank or unset: no errors are reported and Sentry is not contacted. Never logged. |
+| `sentry-environment` | `QUELEA_SENTRY_ENVIRONMENT` | `production`       | Environment tag of the reported errors.                                  |
+
+Error reports cover unexpected exceptions, server errors (5xx), answers that are not documented problems, credentials the service still rejects after a token refresh, and an event stream that stays disconnected for 5 minutes (one report per outage). Player names, player UUIDs and request headers are never sent.
 
 The four credential values come from the Entra app registration of the plugin, described in [`docs/entra-setup.md`](docs/entra-setup.md). Without all of them the plugin sends no token, logs one warning at start-up, and only a `dev` party service accepts its requests.
 

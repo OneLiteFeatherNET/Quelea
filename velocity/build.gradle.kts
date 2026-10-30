@@ -5,8 +5,11 @@ plugins {
 }
 
 dependencies {
-    // Velocity provides the API (and its Gson, Adventure and slf4j) at runtime, so nothing is shaded.
+    // Velocity provides the API (and its Gson, Adventure and slf4j) at runtime, so it is not shaded.
     compileOnly(libs.velocity.api)
+    // Sentry is shaded and relocated (see shadowJar), so it cannot clash with other plugins on the proxy.
+    implementation(platform(libs.sentry.bom))
+    implementation(libs.sentry)
 
     testImplementation(libs.velocity.api)
     testImplementation(mn.junit.jupiter.api)
@@ -33,6 +36,8 @@ tasks {
     shadowJar {
         archiveBaseName.set("quelea-velocity")
         archiveClassifier.set("")
+        relocate("io.sentry", "net.onelitefeather.quelea.velocity.libs.sentry")
+        mergeServiceFiles()
     }
     runVelocity {
         velocityVersion("4.3.1")
