@@ -68,7 +68,7 @@ jobs:
 
       - name: Summarize the API changes
         if: steps.base.outputs.present == 'true'
-        uses: oasdiff/oasdiff-action/changelog@v0.1.21
+        uses: oasdiff/oasdiff-action/changelog@v0.1.22
         with:
           base: api-diff/base.yml
           revision: api-diff/head.yml
@@ -93,7 +93,7 @@ jobs:
 
       - name: Fail on breaking changes
         if: steps.base.outputs.present == 'true'
-        uses: oasdiff/oasdiff-action/breaking@v0.1.21
+        uses: oasdiff/oasdiff-action/breaking@v0.1.22
         with:
           base: api-diff/base.yml
           revision: api-diff/head.yml
