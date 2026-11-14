@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.1](https://github.com/OneLiteFeatherNET/Quelea/compare/v0.5.0...v0.5.1) (2026-11-14)
+
+
+### Bug Fixes
+
+* **deps:** update dependency io.sentry:sentry-bom to v8.63.0 ([#32](https://github.com/OneLiteFeatherNET/Quelea/issues/32)) ([c684e89](https://github.com/OneLiteFeatherNET/Quelea/commit/c684e89facb89d010680e09917851b469e03a3ac))
+* **deps:** update dependency io.sentry:sentry-bom to v8.64.0 ([#37](https://github.com/OneLiteFeatherNET/Quelea/issues/37)) ([614b1ab](https://github.com/OneLiteFeatherNET/Quelea/commit/614b1abdec1d42abf03802abc8e8e4c9270039bf))
+
 ## [0.5.0](https://github.com/OneLiteFeatherNET/Quelea/compare/v0.4.0...v0.5.0) (2026-10-30)
 
 
