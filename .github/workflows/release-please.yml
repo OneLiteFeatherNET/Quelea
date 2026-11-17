@@ -111,4 +111,6 @@ jobs:
     with:
       project-name: "Quelea"
       project-version: ${{ needs.release-please.outputs.version }}
+      parent-uuid: "ad994afc-80fe-41b2-a634-5b4a8e169246"
+      is-latest: true
     secrets: inherit
